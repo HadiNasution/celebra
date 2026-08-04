@@ -92,6 +92,8 @@ No crossover between design systems.
 /faq                       → (landing)/faq/page.tsx
 /demo                      → (landing)/demo/page.tsx
 /contact                   → (landing)/contact/page.tsx
+/checkout                  → (checkout)/page.tsx (payment form + plan selection)
+/checkout/success          → (checkout)/success/page.tsx (post-payment)
 /login                     → (auth)/login/page.tsx
 /admin                     → (admin)/layout.tsx → dashboard, customers, subscriptions, templates, categories, publish-monitoring
 /{slug}                    → [slug]/page.tsx (public invitation, ISG)
@@ -104,6 +106,7 @@ No crossover between design systems.
 
 ```
 /api/auth                 → Better Auth integration (login, logout, session)
+/api/checkout             → Create Xendit invoice, handle callback
 /api/tenants              → Tenant CRUD (admin only)
 /api/invitations          → Customer invitation CRUD
 /api/invitations/:id/content  → Content read/update (editor)
@@ -177,7 +180,6 @@ CREATE TABLE tenants (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   slug          TEXT NOT NULL UNIQUE,
   name          TEXT NOT NULL,
-  trial_ends_at TIMESTAMPTZ NOT NULL,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -191,6 +193,7 @@ CREATE TABLE users (
   tenant_id     UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   name          TEXT NOT NULL,
   email         TEXT NOT NULL,
+  phone         TEXT,
   password_hash TEXT NOT NULL,
   role          TEXT NOT NULL CHECK (role IN ('owner', 'admin', 'staff')),
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -348,7 +351,7 @@ CREATE INDEX idx_publish_histories_invitation_id ON publish_histories(invitation
 CREATE TABLE subscriptions (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id  UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE UNIQUE,
-  plan       TEXT NOT NULL CHECK (plan IN ('trial', '1_month', '3_months', '6_months', '12_months')),
+  plan       TEXT NOT NULL CHECK (plan IN ('1_month', '3_months', '6_months', '12_months')),
   status     TEXT NOT NULL CHECK (status IN ('active', 'expired', 'cancelled')),
   started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   expired_at TIMESTAMPTZ,
@@ -356,6 +359,27 @@ CREATE TABLE subscriptions (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_subscriptions_tenant_id ON subscriptions(tenant_id);
+```
+
+#### Payment
+
+```sql
+CREATE TABLE payments (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id           UUID REFERENCES tenants(id) ON DELETE SET NULL,
+  xendit_invoice_id   TEXT NOT NULL UNIQUE,
+  xendit_external_id  TEXT NOT NULL UNIQUE,
+  user_email          TEXT NOT NULL,
+  user_name           TEXT NOT NULL,
+  user_phone          TEXT,
+  plan                TEXT NOT NULL,
+  amount              INTEGER NOT NULL,
+  status              TEXT NOT NULL CHECK (status IN ('pending', 'paid', 'expired', 'failed')),
+  paid_at             TIMESTAMPTZ,
+  expired_at          TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_payments_tenant_id ON payments(tenant_id);
 ```
 
 #### AuditLog
@@ -438,10 +462,12 @@ tenant:{tenant_id}:invitation:{invitation_id}:published_html
 
 **Login flow:**
 1. POST `/api/auth/login` with `{ email, password }`
-2. Backend validates credentials against `users` table (tenant-scoped: `WHERE tenant_id = ? AND email = ?`)
+2. Backend validates credentials against Better Auth's `user` table
 3. On success: Better Auth creates session, sets httpOnly cookie, returns session info
 4. On failure: return 401 (never disclose whether email or password is wrong)
 5. Rate limited: 5 attempts per 15 min per IP
+
+**Account creation:** No public signup. Accounts are created automatically on successful payment via the checkout flow (see §4.10).
 
 **Logout:** POST `/api/auth/logout` — invalidates session server-side.
 
@@ -622,19 +648,31 @@ The renderer runs both in:
 - R2 upload fails: retry up to 3 times with exponential backoff, then fail with clear error.
 - Multiple rapid publishes: sequential ok (pipeline is synchronous in MVP).
 
-### 4.10 Subscription & Trial
+### 4.10 Customer Onboarding & Payment (Xendit)
 
-**Trial creation (automatic on tenant signup):**
-1. Create `tenant` row with `trial_ends_at = now() + 14 days`
-2. Create `subscription` row: `{ plan: 'trial', status: 'active', started_at: now() }`
+**Checkout flow:**
+1. Customer visits `/checkout`, fills: name, phone, email, selects subscription plan
+2. POST `/api/checkout` creates a pending `payment` row and a Xendit invoice via Xendit API
+3. Frontend redirects customer to Xendit invoice URL for payment
+4. Customer completes payment on Xendit's page
+5. Xendit sends callback to `/api/checkout/callback` on payment success
+6. Backend creates `tenant` (auto-generate unique slug from name), `user` (auto-generate random password), and `subscription` (status: active) in a single transaction
+7. Backend sends credentials (email + password + dashboard URL) via email and WhatsApp
+8. Customer receives credentials and logs in at `/login`
+
+**Xendit integration:**
+- Use Xendit Invoice API (`POST /v2/invoices`)
+- Store `xendit_invoice_id` and `xendit_external_id` in `payments` table
+- Verify callback authenticity via Xendit webhook verification (callback token)
+- On payment failure/expiry: update `payments.status`, no tenant created
 
 **Subscription check (every request to public invitation):**
 - Next.js middleware or `getStaticProps` checks: `SELECT status, expired_at FROM subscriptions WHERE tenant_id = ?`
 - If `expired` → return subscription-expired page (not 404)
-- If `trial` and `now() > trial_ends_at` → return subscription-expired page
 
 **Edge cases:**
-- Trial expired, customer hasn't subscribed: public invitation returns "This invitation is no longer active" page. Dashboard remains accessible for subscription purchase.
+- Payment expired, customer retries: create new payment row + new Xendit invoice
+- Callback received twice (retry): idempotent — check if tenant already exists via `xendit_invoice_id`
 - Subscription renewed after expiry: public invitation becomes available again immediately.
 - Manual activation by admin: POST `/api/admin/subscriptions/:id/activate`
 
@@ -968,6 +1006,14 @@ TenantGuard:
 - [ ] Forgot password: valid email → 200, reset token generated
 - [ ] Forgot password: non-existent email → 200 (consistent response, no user enumeration)
 
+#### Checkout & Payment
+- [ ] Create checkout (name, phone, email, plan) → 201, Xendit invoice created
+- [ ] Xendit callback (paid) → tenant + user + subscription created in transaction
+- [ ] Xendit callback (paid) double-sent → idempotent, no duplicate tenant
+- [ ] Xendit callback (failed/expired) → payment status updated, no tenant created
+- [ ] Credentials sent via email + WhatsApp on payment success
+- [ ] Login with auto-generated credentials → 200
+
 #### Multi-Tenant Isolation
 - [ ] User from tenant A accesses tenant B's invitation → 403
 - [ ] User from tenant A lists invitations → only tenant A's invitations returned
@@ -1125,13 +1171,19 @@ TenantGuard:
 - Apply `Design_System.md` tokens
 - Static content; contact form → POST to backend
 
-**Step 2: Authentication**
+**Step 2: Checkout & Payment**
+- Checkout page (name, phone, email, plan selection)
+- Xendit invoice integration (create invoice, handle callback)
+- Auto-create tenant + user + subscription on payment success
+- Send credentials via email + WhatsApp
+
+**Step 3: Authentication**
 - Login page + Server Action
 - Forgot password flow
 - Session management (Better Auth)
 - Auth guards on NestJS
 
-**Step 3: Admin Panel**
+**Step 4: Admin Panel**
 - Dashboard with aggregate metrics
 - Customer management (tenant CRUD)
 - Subscription management
@@ -1139,14 +1191,14 @@ TenantGuard:
 - Template upload (HTML/CSS/JS + JSON Schema)
 - Publish monitoring
 
-**Step 4: Customer Dashboard — Invitation Management**
+**Step 5: Customer Dashboard — Invitation Management**
 - Invitation list (Server Component)
 - Create invitation (template catalog → select → draft)
 - Duplicate invitation
 - Archive/restore invitation
 - Invitation detail page
 
-**Step 5: Visual Editor**
+**Step 6: Visual Editor**
 - Editor page layout (form panel + iframe)
 - Template placeholder injection engine (server + client)
 - Form panel: dynamic field renderer from JSON Schema
@@ -1155,14 +1207,14 @@ TenantGuard:
 - Desktop/mobile preview modal
 - Publish button + pipeline
 
-**Step 6: Guest Management**
+**Step 7: Guest Management**
 - Guest CRUD (DataTable)
 - CSV/XLSX import
 - QR token generation (UUID)
 - RSVP tracking
 - Guest role assignment
 
-**Step 7: Public Invitation**
+**Step 8: Public Invitation**
 - ISG page for `/{slug}`
 - RSVP form (Client Component)
 - Guestbook (Client Component)
@@ -1170,12 +1222,12 @@ TenantGuard:
 - Template music player
 - Guest personalization via `?guest={token}`
 
-**Step 8: Settings**
+**Step 9: Settings**
 - SEO metadata editor
 - WhatsApp/Telegram share links
 - Calendar invite (.ics generation)
 
-**Step 9: Polish & Testing**
+**Step 10: Polish & Testing**
 - Integration tests for critical flows
 - Cross-tenant isolation tests
 - Rate limiting tests

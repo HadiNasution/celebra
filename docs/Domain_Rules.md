@@ -58,10 +58,20 @@ Publishing should never modify customer content.
 
 ---
 
+# Customer Onboarding
+- Customer fills name, phone, email, and selects a subscription plan on the checkout page.
+- Payment is processed via Xendit (invoice-based).
+- On payment success (Xendit callback): system auto-creates tenant, user, and subscription in a single transaction.
+- A random password is generated for the user.
+- Credentials (email + password + dashboard URL) are sent to the customer via email and WhatsApp.
+- Only after onboarding is the customer able to log in.
+
 # Subscription
-- Every new tenant gets a default trial period.
+- No free trial. Customer must pay to activate.
+- Subscription plan is selected during checkout (1–12 months).
 - Expired subscriptions: public invitation becomes unavailable.
 - Dashboard remains accessible for renewal.
+- Subscription changes must be recorded in Audit Log.
 
 ---
 
@@ -83,3 +93,4 @@ Record:
 - Delete
 - Subscription changes
 - Domain changes
+- Payment events (create invoice, payment success, payment failure)

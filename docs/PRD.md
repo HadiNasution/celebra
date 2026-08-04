@@ -40,7 +40,6 @@ Customers need a self-service, subscription-based platform where they can create
 | Public invitation page load (guest-facing) | <2 seconds globally (CDN) |
 | Scanner offline sync success rate | >99% once connectivity restored |
 | Cross-tenant data leaks | Zero |
-| Trial-to-paid conversion | TBD post-launch (baseline needed) |
 | Guest RSVP completion rate | TBD (baseline needed) |
 
 ---
@@ -84,12 +83,25 @@ Route: `/admin`
 ### 3. Customer Dashboard
 Route: `/{slug}/dashboard`
 
-#### 3.1 Authentication
+#### 3.1 Authentication & Onboarding
+- **Onboarding flow:**
+  1. Customer fills checkout form: name, phone, email, selects subscription plan
+  2. Payment is processed via Xendit (invoice-based)
+  3. On payment success, system auto-creates tenant + user + subscription in a single transaction
+  4. A random password is generated for the user
+  5. Credentials (email + password + dashboard URL) are sent to customer via email and WhatsApp
+  6. Customer logs in with email + received password
 - Login (email + password via Better Auth)
 - Forgot Password flow
 - Session expiration enforced
 
-#### 3.2 Invitation Management
+#### 3.2 Checkout & Payment
+- Checkout page: name, phone, email, subscription plan selection
+- Payment processing via Xendit invoice API
+- On payment callback: auto-create tenant, user, subscription
+- Send credentials via email and WhatsApp
+
+#### 3.3 Invitation Management
 | Action | Description |
 |--------|-------------|
 | Create Invitation | Select template → create draft |
@@ -100,12 +112,12 @@ Route: `/{slug}/dashboard`
 
 Invitation states: `draft`, `published`.
 
-#### 3.3 Template Catalog
+#### 3.4 Template Catalog
 - Browse templates by category
 - Search templates by name
 - Preview template before selection
 
-#### 3.4 Visual Editor
+#### 3.5 Visual Editor
 Architecture: Form-driven, no drag-and-drop.
 
 - Renders raw HTML template in an iframe.
@@ -126,20 +138,20 @@ Editable sections:
 - Additional Information
 - Optional sections (toggle on/off per section)
 
-#### 3.5 Guest Management
+#### 3.6 Guest Management
 - CRUD operations for guests
 - Import guests via CSV / XLSX
 - Assign Guest Roles (Family, Friend, VIP, Vendor)
 - Generate unique QR token (UUID) per guest
 - Track RSVP responses per guest
 
-#### 3.6 Preview
+#### 3.7 Preview
 - Desktop viewport preview
 - Mobile viewport preview
 - Uses same renderer as editor (true WYSIWYG)
 - Save draft / Reset to last saved
 
-#### 3.7 Settings
+#### 3.8 Settings
 - Localization (multi-language via `next-intl`)
 - WhatsApp share integration
 - Telegram share integration
@@ -233,6 +245,8 @@ Constraints:
 
 ### Phase 1 (MVP)
 - Landing Website (Home, Pricing, FAQ, Demo, Contact)
+- Checkout & Payment via Xendit
+- Customer Onboarding (auto-create tenant/user/subscription on payment success)
 - Admin Panel (Dashboard, Customer/Subscription/Template Management, Categories, Publish Monitoring)
 - Customer Dashboard (Auth, Invitation CRUD, Template Catalog, Visual Editor, Guest Management, Preview, Settings)
 - Publish Pipeline (ISG + API routes)
@@ -313,7 +327,6 @@ Constraints:
 - PostgreSQL RLS is adequate as a second isolation layer; no need for separate databases per tenant.
 - ISG (Incremental Static Generation via Vercel ISR) is sufficient for public invitation performance; edge-rendered pages are not required.
 - QR scanner users (event staff) will have occasional internet access for initial guest list download and periodic syncs.
-- Trial period of 14 days is adequate for customer conversion evaluation.
 - All uploaded files fit the allowed MIME types (JPG, PNG, WebP, AVIF, MP4, MP3); any other type is rejected.
 
 ---
@@ -348,8 +361,7 @@ Constraints:
 ## Open Questions
 
 1. **Pricing model specifics**: Exact pricing tiers and durations for subscriptions are not yet defined. Needs business validation.
-2. **Trial conversion funnel**: What happens after the 14-day trial ends? Is the invitation deactivated immediately or after a grace period? What messaging is shown to guests?
-3. **Template authoring tooling**: Will admin upload raw HTML/CSS/JS manually, or will there be a template authoring guide/validator for `{{placeholders}}` and JSON Schema?
+1. **Template authoring tooling**: Will admin upload raw HTML/CSS/JS manually, or will there be a template authoring guide/validator for `{{placeholders}}` and JSON Schema?
 4. **Guest privacy (GDPR/CCPA compliance)**: What personal data is collected from guests (name, phone, attendance)? How is consent handled? Are data retention and deletion policies defined?
 5. **Multi-language scope**: Which languages are supported at launch? Is translation done by the platform or by the customer? Does `next-intl` cover both dashboard and public invitation?
 6. **Analytics detail**: What specific metrics are tracked for public invitations (visits, RSVP rate, etc.)? What is shown to admin vs. customer?

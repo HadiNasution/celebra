@@ -19,7 +19,6 @@ Fields:
 - id
 - slug (unique, used in URL)
 - name
-- trial_ends_at
 - created_at
 - updated_at
 
@@ -33,6 +32,7 @@ Fields:
 - tenant_id
 - name
 - email
+- phone
 - password_hash
 - role
 - created_at
@@ -159,10 +159,30 @@ Fields:
 Fields:
 - id
 - tenant_id
-- plan
-- status
+- plan (1_month | 3_months | 6_months | 12_months)
+- status (active | expired | cancelled)
 - started_at
 - expired_at
+
+---
+
+# Payment
+Tracks Xendit payment invoices.
+
+Fields:
+- id
+- tenant_id (nullable, filled after tenant creation)
+- xendit_invoice_id
+- xendit_external_id
+- user_email
+- user_name
+- user_phone
+- plan
+- amount
+- status (pending | paid | expired | failed)
+- paid_at
+- expired_at
+- created_at
 
 ---
 
