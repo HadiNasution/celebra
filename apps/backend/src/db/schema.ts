@@ -38,7 +38,7 @@ export const users = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [
-    check("users_role_check", sql`${t.role} IN ('owner', 'admin', 'staff')`),
+    check("users_role_check", sql`${t.role} IN ('super_admin', 'owner', 'admin', 'staff')`),
     unique("users_tenant_email").on(t.tenantId, t.email),
     index("idx_users_tenant_id").on(t.tenantId),
   ],

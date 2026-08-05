@@ -1,9 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { randomUUID } from "crypto";
-import { db } from "../db/connection";
-import { payments } from "../db/schema";
+import { Pool } from "pg";
 import { CreateCheckoutDto, PLAN_PRICES } from "./dto/create-checkout.dto";
-import { eq } from "drizzle-orm";
 
 type XenditInvoice = {
   id: string;
@@ -11,6 +9,27 @@ type XenditInvoice = {
   invoice_url: string;
   status: string;
 };
+
+type Payment = {
+  id: string;
+  tenant_id: string | null;
+  xendit_invoice_id: string;
+  xendit_external_id: string;
+  user_email: string;
+  user_name: string;
+  user_phone: string | null;
+  plan: string;
+  amount: number;
+  status: string;
+  paid_at: Date | null;
+  expired_at: Date | null;
+  created_at: Date;
+};
+
+// ponytail: raw pg pool bypasses drizzle prepared statement SCRAM auth bug
+const rawPool = new Pool({
+  connectionString: process.env.DATABASE_URL ?? "postgres://celebra:celebra@localhost:5432/celebra",
+});
 
 @Injectable()
 export class PaymentService {
@@ -21,22 +40,43 @@ export class PaymentService {
     const externalId = `celebra-${randomUUID().slice(0, 8)}`;
     const xenditInvoice = await this.createXenditInvoice(dto, externalId, amount);
 
-    const [payment] = await db
-      .insert(payments)
-      .values({
-        xenditInvoiceId: xenditInvoice.id,
-        xenditExternalId: externalId,
-        userEmail: dto.email,
-        userName: dto.name,
-        userPhone: dto.phone ?? null,
-        plan: dto.plan,
+    const paymentId = randomUUID();
+    await rawPool.query(
+      `INSERT INTO payments (id, xendit_invoice_id, xendit_external_id, user_email, user_name, user_phone, plan, amount, status, expired_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [
+        paymentId,
+        xenditInvoice.id,
+        externalId,
+        dto.email,
+        dto.name,
+        dto.phone ?? null,
+        dto.plan,
         amount,
-        status: "pending",
-        expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      })
-      .returning();
+        "pending",
+        new Date(Date.now() + 24 * 60 * 60 * 1000),
+      ],
+    );
 
-    return { paymentId: payment!.id, invoiceUrl: xenditInvoice.invoice_url };
+    return { paymentId, invoiceUrl: xenditInvoice.invoice_url };
+  }
+
+  async handlePaidCallback(paymentId: string) {
+    const { rows } = await rawPool.query(
+      `SELECT * FROM payments WHERE id = $1 LIMIT 1`,
+      [paymentId],
+    );
+    const payment = rows[0] as Payment | undefined;
+
+    if (!payment) throw new Error("Payment not found");
+    if (payment.status === "paid") return payment; // idempotent
+
+    const { rows: updated } = await rawPool.query(
+      `UPDATE payments SET status = 'paid', paid_at = $1 WHERE id = $2 RETURNING *`,
+      [new Date(), paymentId],
+    );
+
+    return updated[0] as Payment;
   }
 
   private async createXenditInvoice(
@@ -44,7 +84,6 @@ export class PaymentService {
     externalId: string,
     amount: number,
   ): Promise<XenditInvoice> {
-    // ponytail: if XENDIT_API_KEY not set, return mock for local dev
     if (!this.xenditKey || this.xenditKey === "mock") {
       return {
         id: `mock-${externalId}`,
@@ -73,24 +112,5 @@ export class PaymentService {
 
     if (!res.ok) throw new Error(`Xendit API error: ${await res.text()}`);
     return res.json() as Promise<XenditInvoice>;
-  }
-
-  async handlePaidCallback(xenditInvoiceId: string) {
-    const payment = await db
-      .select()
-      .from(payments)
-      .where(eq(payments.xenditInvoiceId, xenditInvoiceId))
-      .limit(1);
-
-    if (payment.length === 0) throw new Error("Payment not found");
-    if (payment[0]!.status === "paid") return payment[0]!; // idempotent
-
-    const [updated] = await db
-      .update(payments)
-      .set({ status: "paid", paidAt: new Date() })
-      .where(eq(payments.xenditInvoiceId, xenditInvoiceId))
-      .returning();
-
-    return updated!;
   }
 }

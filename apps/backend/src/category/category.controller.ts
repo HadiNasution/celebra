@@ -3,16 +3,19 @@ import { CategoryService } from "./category.service";
 import { CreateCategoryDto, UpdateCategoryDto } from "./category.dto";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
+import { Public } from "../common/decorators/public.decorator";
 
 @Controller("categories")
 export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
 
+  @Public()
   @Get()
   findAll() {
     return this.categoryService.findAll();
   }
 
+  @Public()
   @Get(":id")
   findOne(@Param("id") id: string) {
     return this.categoryService.findById(id);

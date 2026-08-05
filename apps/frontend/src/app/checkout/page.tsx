@@ -67,6 +67,18 @@ export default function CheckoutPage() {
       }
 
       const data = await res.json();
+
+      // ponytail: auto-confirm payment in mock mode
+      if (data.invoiceUrl.includes("mock=1")) {
+        await fetch(`${apiUrl}/checkout/mock-confirm`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paymentId: data.paymentId }),
+        });
+        window.location.href = "/checkout/success";
+        return;
+      }
+
       window.location.href = data.invoiceUrl;
     } catch {
       setError("Could not connect to server. Please try again.");

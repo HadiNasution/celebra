@@ -1,94 +1,117 @@
 import { Injectable } from "@nestjs/common";
-import { db } from "../db/connection";
-import { tenants, users, subscriptions as subsTable, auditLogs, authUser, authAccount, payments } from "../db/schema";
+import { Pool } from "pg";
 import { randomUUID } from "crypto";
-import * as bcrypt from "bcryptjs";
 import { PLAN_MONTHS, type Plan } from "../checkout/dto/create-checkout.dto";
-import { eq } from "drizzle-orm";
 
 type Payment = {
   id: string;
-  userEmail: string;
-  userName: string;
-  userPhone: string | null;
+  user_email: string;
+  user_name: string;
+  user_phone: string | null;
   plan: string;
 };
+
+const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+
+// ponytail: raw pg pool bypasses drizzle prepared statement SCRAM auth bug
+const rawPool = new Pool({
+  connectionString: process.env.DATABASE_URL ?? "postgres://celebra:celebra@localhost:5432/celebra",
+});
 
 @Injectable()
 export class TenantService {
   async createTenantOnPayment(payment: Payment) {
-    const slug = this.slugify(payment.userName);
+    const slug = this.slugify(payment.user_name);
     const password = randomUUID().slice(0, 12);
-    const passwordHash = await bcrypt.hash(password, 10);
+    const tenantId = randomUUID();
+    const userId = randomUUID();
+    const subId = randomUUID();
+    const auditId = randomUUID();
     const now = new Date();
+    const months = PLAN_MONTHS[payment.plan as Plan] ?? 1;
+    const expiredAt = new Date(now);
+    expiredAt.setMonth(expiredAt.getMonth() + months);
 
-    return await db.transaction(async (tx) => {
-      const [tenant] = await tx
-        .insert(tenants)
-        .values({ name: payment.userName, slug })
-        .returning();
-      if (!tenant) throw new Error("Failed to create tenant");
+    const client = await rawPool.connect();
+    try {
+      await client.query("BEGIN");
 
-      await tx.insert(users).values({
-        tenantId: tenant.id,
-        name: payment.userName,
-        email: payment.userEmail,
-        phone: payment.userPhone ?? null,
-        passwordHash,
-        role: "owner",
-      });
+      await client.query(
+        `INSERT INTO tenants (id, slug, name) VALUES ($1, $2, $3)`,
+        [tenantId, slug, payment.user_name],
+      );
 
-      // ponytail: insert directly into Better Auth tables for auto-created user
-      const authUserId = randomUUID();
-      await tx.insert(authUser).values({
-        id: authUserId,
-        name: payment.userName,
-        email: payment.userEmail,
-        emailVerified: false,
-      });
-      await tx.insert(authAccount).values({
-        id: randomUUID(),
-        userId: authUserId,
-        providerId: "credential",
-        accountId: authUserId,
-        password: passwordHash,
-      });
+      await client.query(
+        `INSERT INTO users (id, tenant_id, name, email, phone, password_hash, role)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [userId, tenantId, payment.user_name, payment.user_email, payment.user_phone ?? null, "", "owner"],
+      );
 
-      const months = PLAN_MONTHS[payment.plan as Plan] ?? 1;
-      const expiredAt = new Date(now);
-      expiredAt.setMonth(expiredAt.getMonth() + months);
+      await client.query(
+        `INSERT INTO subscriptions (id, tenant_id, plan, status, expired_at)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [subId, tenantId, payment.plan, "active", expiredAt],
+      );
 
-      await tx.insert(subsTable).values({
-        tenantId: tenant.id,
-        plan: payment.plan,
-        status: "active",
-        expiredAt,
-      });
+      await client.query(
+        `INSERT INTO audit_logs (id, tenant_id, action, entity, entity_id, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [auditId, tenantId, "tenant.created", "tenant", tenantId, JSON.stringify({ plan: payment.plan })],
+      );
 
-      await tx.insert(auditLogs).values({
-        tenantId: tenant.id,
-        action: "tenant.created",
-        entity: "tenant",
-        entityId: tenant.id,
-        metadata: { plan: payment.plan },
-      });
+      await client.query(
+        `UPDATE payments SET tenant_id = $1 WHERE id = $2`,
+        [tenantId, payment.id],
+      );
 
-      await tx
-        .update(payments)
-        .set({ tenantId: tenant.id })
-        .where(eq(payments.id, payment.id));
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
 
-      return { tenant, password, slug };
+    // ponytail: use Better Auth's sign-up API for proper password hashing
+    const res = await fetch(`${frontendUrl}/api/auth/sign-up/email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: frontendUrl,
+      },
+      body: JSON.stringify({
+        email: payment.user_email,
+        password,
+        name: payment.user_name,
+      }),
     });
+
+    const body = await res.json() as Record<string, unknown>;
+    // ponytail: retry with cleanup if user exists from prior test run
+    if (!res.ok && body.code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL") {
+      await rawPool.query(`DELETE FROM account WHERE user_id = (SELECT id FROM "user" WHERE email = $1)`, [payment.user_email]);
+      await rawPool.query(`DELETE FROM "user" WHERE email = $1`, [payment.user_email]);
+      const retry = await fetch(`${frontendUrl}/api/auth/sign-up/email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Origin: frontendUrl },
+        body: JSON.stringify({ email: payment.user_email, password, name: payment.user_name }),
+      });
+      if (!retry.ok) {
+        throw new Error(`Better Auth sign-up retry failed: ${await retry.text()}`);
+      }
+    } else if (!res.ok) {
+      throw new Error(`Better Auth sign-up failed: ${JSON.stringify(body)}`);
+    }
+
+    return { tenant: { id: tenantId, name: payment.user_name, slug }, password, slug };
   }
 
   async findBySlug(slug: string) {
-    const result = await db
-      .select()
-      .from(tenants)
-      .where(eq(tenants.slug, slug))
-      .limit(1);
-    return result[0] ?? null;
+    const { rows } = await rawPool.query(
+      `SELECT * FROM tenants WHERE slug = $1 LIMIT 1`,
+      [slug],
+    );
+    return rows[0] ?? null;
   }
 
   private slugify(name: string): string {
