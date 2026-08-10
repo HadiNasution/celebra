@@ -8,7 +8,7 @@ const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 export async function loginAction(
   email: string,
   password: string,
-): Promise<{ error?: string; role?: string }> {
+): Promise<{ error?: string; role?: string; tenantSlug?: string | null }> {
   const res = await fetch(`${apiUrl}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -31,7 +31,7 @@ export async function loginAction(
     path: "/",
   });
 
-  return { role: data.user.role as string };
+  return { role: data.user.role as string, tenantSlug: data.tenantSlug as string | null };
 }
 
 export async function logoutAction(): Promise<void> {

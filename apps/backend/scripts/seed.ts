@@ -27,6 +27,14 @@ async function seed() {
     [userId, systemTenantId, "Super Admin", "admin@celebra.com", hash, "super_admin"],
   );
 
+  // Default guest roles
+  for (const role of ["Family", "Friend", "VIP", "Vendor"]) {
+    const exists = await pool.query(`SELECT 1 FROM guest_roles WHERE name = $1`, [role]);
+    if (exists.rowCount === 0) {
+      await pool.query(`INSERT INTO guest_roles (name) VALUES ($1)`, [role]);
+    }
+  }
+
   console.log("Seed complete:");
   console.log("  Email:    admin@celebra.com");
   console.log("  Password: admin123");

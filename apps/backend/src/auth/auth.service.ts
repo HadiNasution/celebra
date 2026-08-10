@@ -1,7 +1,9 @@
 import { HttpException, Injectable, UnauthorizedException } from "@nestjs/common";
 import * as bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
-import { rawPool } from "../db/connection";
+import { eq } from "drizzle-orm";
+import { db, rawPool } from "../db/connection";
+import { tenants } from "../db/schema";
 import { RedisService } from "../redis/redis.service";
 import { signToken, type AuthUser } from "./token";
 
@@ -36,7 +38,23 @@ export class AuthService {
       role: row.role,
       tenantId: row.tenant_id,
     };
-    return { token: signToken(authUser), user: authUser };
+    const tenantSlug = await this.resolveTenantSlug(row.tenant_id);
+    return { token: signToken(authUser), user: authUser, tenantSlug };
+  }
+
+  async me(user: AuthUser) {
+    const tenantSlug = await this.resolveTenantSlug(user.tenantId);
+    return { user: { ...user, tenantSlug } };
+  }
+
+  private async resolveTenantSlug(tenantId: string | null): Promise<string | null> {
+    if (!tenantId) return null;
+    const tenant = await db
+      .select({ slug: tenants.slug })
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
+    return tenant[0]?.slug ?? null;
   }
 
   async forgotPassword(email: string, ip: string) {

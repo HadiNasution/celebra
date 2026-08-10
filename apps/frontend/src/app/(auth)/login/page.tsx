@@ -28,7 +28,11 @@ export default function LoginPage() {
       return;
     }
 
-    router.push(result.role === "super_admin" ? "/admin" : "/dashboard");
+    if (result.role === "super_admin") {
+      router.push("/admin");
+    } else {
+      router.push(`/${result.tenantSlug}/dashboard`);
+    }
     router.refresh();
   }
 
