@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { signOut } from "@/lib/auth-client";
+import { logoutAction } from "../(auth)/actions";
 
 const navItems = [
   { href: "/admin", label: "Dashboard" },
@@ -20,14 +20,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/auth/session")
-      .then((r) => r.json())
-      .then((data) => {
-        if (!data?.user) {
-          router.push("/login");
-        }
-        setLoading(false);
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
+    fetch(`${apiUrl}/auth/me`, { credentials: "include" })
+      .then((r) => {
+        if (!r.ok) throw new Error("unauthorized");
+        return r.json();
       })
+      .then(() => setLoading(false))
       .catch(() => router.push("/login"));
   }, [router]);
 
@@ -63,7 +62,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="mt-auto pt-4">
           <button
             onClick={async () => {
-              await signOut();
+              await logoutAction();
               router.push("/login");
             }}
             className="w-full rounded-lg px-3 py-2 text-left text-sm text-text-secondary hover:bg-white/5 hover:text-white"

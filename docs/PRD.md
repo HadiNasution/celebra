@@ -91,7 +91,7 @@ Route: `/{slug}/dashboard`
   4. A random password is generated for the user
   5. Credentials (email + password + dashboard URL) are sent to customer via email and WhatsApp
   6. Customer logs in with email + received password
-- Login (email + password via Better Auth)
+- Login (email + password via HMAC-signed token in httpOnly cookie)
 - Forgot Password flow
 - Session expiration enforced
 
@@ -233,7 +233,7 @@ Constraints:
 | **Shared database, shared tables** | Simpler operations; isolation enforced by queries + RLS rather than separate databases per tenant. |
 | **PostgreSQL + Drizzle ORM** | Relational integrity, strong typing, push-based migrations for single-developer velocity. |
 | **Cloudflare R2 for object storage** | Tenant-scoped paths (`tenant/{tenant_id}/...`); signed URLs only; bucket never exposed directly. |
-| **Better Auth with Drizzle adapter** | Handles authentication/authorization; avoids building auth from scratch. |
+| **Simple in-house auth (HMAC token + bcryptjs)** | Accounts are short-lived (one event per customer); a stateless HMAC-signed token cookie avoids a session framework, session tables, and DB lookups per request. |
 | **Redis for cache** | Tenant-scoped keys (`tenant:{id}:resource`); session storage, expensive query caching, rate limiting. |
 | **Three design systems** | Landing (custom tokens), Dashboard (shadcn/ui + Tailwind), Public Invitation (template HTML/CSS/JS). No crossover. |
 | **BullMQ deferred to Phase 2** | Not needed in MVP; email, notifications, image processing run synchronously in request cycle. |
@@ -283,8 +283,7 @@ Constraints:
 | Vercel | Frontend hosting, ISR, CDN | High (production) |
 | Cloudflare R2 | Object storage (images, music, media) | High |
 | PostgreSQL (self-hosted VPS) | Primary database | Critical |
-| Redis (self-hosted VPS) | Cache, session store, rate limiting | High |
-| Better Auth (library) | Authentication | Critical |
+| Redis (self-hosted VPS) | Cache, rate limiting | High |
 | Docker Compose (VPS) | Backend + DB + Redis deployment | High |
 
 ### Key Libraries
@@ -293,6 +292,7 @@ Constraints:
 | Next.js | Frontend framework |
 | NestJS | Backend framework |
 | Drizzle ORM | Database access |
+| bcryptjs + node:crypto | Password hashing + HMAC token signing (in-house auth) |
 | shadcn/ui | Dashboard UI components |
 | Tailwind CSS | Dashboard styling |
 | Sharp | Image processing (resize, compress, WebP/AVIF) |
@@ -368,6 +368,6 @@ Constraints:
 7. **Notification delivery**: How are guest invitations delivered? Email with token URL? WhatsApp link? SMS? Which channels are Phase 1?
 8. **Media upload limits**: What is the per-file size limit and per-invitation total storage cap? Is this enforced at the R2 level or application level?
 9. **Subscription grace period**: Does the platform offer a grace period after subscription expiry before deactivating the public invitation? Duration?
-10. **Admin panel authentication**: Does the admin panel use the same Better Auth system as customers? Are there separate admin credentials or role-based access within the same system?
+10. **Admin panel authentication**: Does the admin panel use the same auth system as customers? Are there separate admin credentials or role-based access within the same system?
 11. **Scanner deployment**: How will the PWA scanner be distributed to event staff? Via URL only, or will there be a wrapper app?
 12. **Template marketplace business model**: What is the revenue split between platform and template authors in Phase 3?

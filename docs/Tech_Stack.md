@@ -62,8 +62,9 @@
 ---
 
 ## Authentication
-- Better Auth
-- Drizzle adapter
+- In-house: HMAC-signed token (node:crypto) in httpOnly cookie
+- Password hashing: bcryptjs
+- Stateless (no session table)
 
 ---
 

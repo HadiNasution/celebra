@@ -29,7 +29,7 @@ celebra/
 | Next.js frontend | Vercel | Edge CDN, ISR, hybrid ISG+API |
 | NestJS backend | VPS (Docker Compose) | REST API behind reverse proxy |
 | PostgreSQL | VPS (Docker Compose) | Single shared database, RLS enforced |
-| Redis | VPS (Docker Compose) | Cache, sessions, rate limiting |
+| Redis | VPS (Docker Compose) | Cache, rate limiting |
 | Cloudflare R2 | Cloudflare | Object storage, signed URLs |
 | BullMQ | VPS (Phase 2+) | Deferred from MVP |
 
@@ -105,7 +105,7 @@ No crossover between design systems.
 ### 2.2 NestJS API Modules
 
 ```
-/api/auth                 → Better Auth integration (login, logout, session)
+/api/auth                 → Auth (login, me, forgot-password) — HMAC token
 /api/checkout             → Create Xendit invoice, handle callback
 /api/tenants              → Tenant CRUD (admin only)
 /api/invitations          → Customer invitation CRUD
@@ -129,7 +129,7 @@ No crossover between design systems.
 
 Every endpoint must implement:
 - **Input validation** — DTO + `class-validator` + `ValidationPipe`
-- **Authentication** — Better Auth guard on protected routes
+- **Authentication** — AuthGuard validates HMAC-signed token from `celebra_session` cookie
 - **Authorization** — Tenant ownership verification (slug → tenant_id), RBAC at service layer
 - **Exception handling** — `HttpException` with consistent error response shape
 - **Structured logging** — timestamp, level, requestId, userId, action, error
@@ -458,26 +458,34 @@ tenant:{tenant_id}:invitation:{invitation_id}:published_html
 
 ## 4. Backend Behavior Details & Edge Cases
 
-### 4.1 Authentication (Better Auth + Drizzle Adapter)
+### 4.1 Authentication (HMAC Token)
+
+Accounts are short-lived (one event per customer), so a stateless HMAC-signed token replaces a session framework. No session table, no DB lookup per request, no revoke.
+
+**Token format:**
+```
+base64url(JSON payload).base64url(HMAC-SHA256(payload, AUTH_TOKEN_SECRET))
+```
+Payload: `{ id, email, role, tenantId, exp }`. TTL: 30 days. Signed with `node:crypto`, verified in constant time.
 
 **Login flow:**
-1. POST `/api/auth/login` with `{ email, password }`
-2. Backend validates credentials against Better Auth's `user` table
-3. On success: Better Auth creates session, sets httpOnly cookie, returns session info
+1. `POST /api/auth/login` with `{ email, password }`
+2. Backend looks up `users` by email, verifies password with `bcryptjs`
+3. On success: returns `{ token, user }`; the frontend server action stores it in an httpOnly cookie `celebra_session`
 4. On failure: return 401 (never disclose whether email or password is wrong)
-5. Rate limited: 5 attempts per 15 min per IP
+5. Rate limited: 5 attempts per 15 min per IP (Redis key `auth:login:{ip}`)
 
-**Account creation:** No public signup. Accounts are created automatically on successful payment via the checkout flow (see §4.10).
+**Account creation:** No public signup. Accounts are created automatically on successful payment via the checkout flow (see §4.10). The generated password is hashed with `bcryptjs` and stored directly in `users.password_hash`.
 
-**Logout:** POST `/api/auth/logout` — invalidates session server-side.
+**Logout:** Stateless — the frontend deletes the `celebra_session` cookie. No server call.
 
-**Session expiration:** Enforced by Better Auth. Default TTL: 7 days, refresh on activity.
+**Session expiration:** Enforced by the token `exp` claim (30 days, no refresh-on-activity).
 
 **Edge cases:**
-- Session expired mid-edit: return 401; frontend redirects to login with `?redirect=` param.
-- Concurrent sessions: Allowed (devices). Revoke-all-sessions in Phase 2.
-- Forgot password: POST `/api/auth/forgot-password` → sends email with reset token (TTL: 15 min). Token stored in Redis: `reset_token:{token}` → `{ user_id, tenant_id }`.
-- Admin login: Same auth system. Role-based guard (`role = 'admin'`) on `/admin` routes.
+- Token expired mid-edit: AuthGuard returns 401; frontend redirects to login with `?redirect=` param.
+- Concurrent sessions: Allowed (devices). Each login issues an independent token.
+- Forgot password: `POST /api/auth/forgot-password` → always 200 (no user enumeration); if the email exists, a reset token (TTL: 15 min) is stored in Redis `reset_token:{token}` → `{ user_id }` and emailed. Reset-password page deferred to Phase 2.
+- Admin login: Same auth system. Role-based guard (`role = 'super_admin'`) on `/admin` routes. Initial super_admin seeded via `scripts/seed.ts`.
 
 ### 4.2 Authorization (RBAC)
 
@@ -491,12 +499,12 @@ tenant:{tenant_id}:invitation:{invitation_id}:published_html
 Tenant ownership check (NestJS guard):
 1. Extract slug from route param
 2. Resolve `tenant_id` from slug
-3. Get current user's `tenant_id` from session
+3. Get current user's `tenant_id` from the token payload
 4. Assert: `current_user.tenant_id === resolved_tenant_id` → proceed, else → 403
 
 **Edge cases:**
 - User from tenant A accesses tenant B's slug: 403.
-- Deleted user tries to access: 401 (session invalid).
+- Deleted user tries to access: 401 (token invalid).
 - Expired trial: dashboard remains accessible; publish is blocked.
 
 ### 4.3 Invitation CRUD
@@ -656,7 +664,7 @@ The renderer runs both in:
 3. Frontend redirects customer to Xendit invoice URL for payment
 4. Customer completes payment on Xendit's page
 5. Xendit sends callback to `/api/checkout/callback` on payment success
-6. Backend creates `tenant` (auto-generate unique slug from name), `user` (auto-generate random password), and `subscription` (status: active) in a single transaction
+6. Backend creates `tenant` (auto-generate unique slug from name), `user` (auto-generate random password, stored as a `bcryptjs` hash), and `subscription` (status: active) in a single transaction
 7. Backend sends credentials (email + password + dashboard URL) via email and WhatsApp
 8. Customer receives credentials and logs in at `/login`
 
@@ -778,7 +786,7 @@ All routes authenticated. Role: `owner` or `admin` of tenant.
 
 | Page | Components | Notes |
 |------|-----------|-------|
-| Login | LoginForm (email, password, submit), ForgotPasswordLink | Server Action → Better Auth |
+| Login | LoginForm (email, password, submit), ForgotPasswordLink | Server Action → `POST /api/auth/login`, sets `celebra_session` cookie |
 | Forgot Password | EmailInput, SubmitButton | Server Action → POST to NestJS |
 
 #### 5.3.2 Invitation List `/(dashboard)/invitations/`
@@ -955,7 +963,7 @@ Uses same renderer as editor (iframe + injected HTML). Read-only.
 ### 6.3 Guard Implementation (NestJS)
 
 ```typescript
-// AuthGuard — validates session
+// AuthGuard — validates HMAC token
 @UseGuards(AuthGuard)
 
 // TenantGuard — resolves tenant_id from slug, verifies user belongs to tenant
@@ -974,7 +982,7 @@ Uses same renderer as editor (iframe + injected HTML). Read-only.
 ```
 TenantGuard:
   1. Get slug from @Param('slug') or infer from invitation_id → tenant_id
-  2. Get current user from session (AuthGuard must run first)
+  2. Get current user from token (AuthGuard must run first)
   3. If super_admin: skip tenant check (access all)
   4. If normal user: assert user.tenant_id === resolved_tenant_id
   5. Set app.current_tenant_id for RLS
@@ -997,11 +1005,11 @@ TenantGuard:
 ### 7.2 Critical Flow Tests (per Definition_of_Done.md)
 
 #### Authentication
-- [ ] Login with valid credentials → 200, session cookie set
+- [ ] Login with valid credentials → 200, token cookie set
 - [ ] Login with invalid password → 401
 - [ ] Login with non-existent email → 401
-- [ ] Access protected endpoint without session → 401
-- [ ] Access protected endpoint with expired session → 401
+- [ ] Access protected endpoint without token → 401
+- [ ] Access protected endpoint with expired token → 401
 - [ ] Rate limit: 5 failed logins → 6th returns 429
 - [ ] Forgot password: valid email → 200, reset token generated
 - [ ] Forgot password: non-existent email → 200 (consistent response, no user enumeration)
@@ -1158,7 +1166,7 @@ TenantGuard:
 5. Set up Docker Compose: PostgreSQL 16, Redis 7
 6. Configure environment variables (`.env.example`)
 7. Set up ESLint, Prettier, TypeScript strict mode
-8. Initialize Better Auth with Drizzle adapter
+8. Implement HMAC token auth (AuthService, AuthGuard, `AUTH_TOKEN_SECRET`)
 9. Create initial Drizzle schema + `drizzle-kit push`
 10. Set up Vitest (frontend) and Jest (backend) configurations
 
@@ -1180,7 +1188,7 @@ TenantGuard:
 **Step 3: Authentication**
 - Login page + Server Action
 - Forgot password flow
-- Session management (Better Auth)
+- Session management (HMAC token cookie)
 - Auth guards on NestJS
 
 **Step 4: Admin Panel**
@@ -1268,8 +1276,6 @@ TenantGuard:
 ```bash
 # apps/frontend (.env.local)
 NEXT_PUBLIC_API_URL=http://localhost:3001/api
-BETTER_AUTH_SECRET=xxx
-BETTER_AUTH_URL=http://localhost:3000
 
 # apps/backend (.env)
 DATABASE_URL=postgresql://user:pass@localhost:5432/celebra
@@ -1279,7 +1285,7 @@ R2_ACCESS_KEY_ID=xxx
 R2_SECRET_ACCESS_KEY=xxx
 R2_BUCKET_NAME=celebra
 R2_PUBLIC_URL=https://cdn.celebra.com
-BETTER_AUTH_SECRET=xxx
+AUTH_TOKEN_SECRET=xxx
 SMTP_HOST=xxx
 SMTP_PORT=587
 SMTP_USER=xxx
@@ -1309,6 +1315,6 @@ For each open question, the TDD assumes a default. Deviations must be resolved b
 | 7 | Guest invitation delivery | MVP: customer manually shares invitation URL (WhatsApp, Telegram). Email delivery in Phase 2. | Phase 1 |
 | 8 | File size limits | 10MB per file. Per-invitation cap: 500MB. Enforced at application layer. | Phase 1 — Step 5 |
 | 9 | Subscription grace period | 30 days after expiry → invitation deactivated. Dashboard accessible for renewal. | Phase 1 — Step 3 |
-| 10 | Admin authentication | Same Better Auth system. Initial super_admin seeded manually via DB script. | Phase 0 |
+| 10 | Admin authentication | Same HMAC token auth system. Initial super_admin seeded via `scripts/seed.ts`. | Phase 0 |
 | 11 | Scanner distribution | URL only (`/{slug}/scanner`). PWA "Add to Home Screen" prompt. | Phase 2 |
 | 12 | Template marketplace revenue | TBD Phase 3 — not needed for MVP. | Phase 3 |

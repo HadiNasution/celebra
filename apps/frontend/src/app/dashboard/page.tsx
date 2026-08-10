@@ -7,9 +7,10 @@ export default function DashboardPage() {
   const [user, setUser] = useState<{ email?: string } | null>(null);
 
   useEffect(() => {
-    fetch("/api/auth/session")
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
+    fetch(`${apiUrl}/auth/me`, { credentials: "include" })
       .then((r) => r.json())
-      .then(setUser)
+      .then((data) => setUser(data.user ?? null))
       .catch(() => setUser(null));
   }, []);
 

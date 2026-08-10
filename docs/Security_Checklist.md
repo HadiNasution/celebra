@@ -6,7 +6,7 @@ This document defines the minimum security standards for the platform.
 # Authentication
 - Every protected endpoint must require authentication.
 - Never trust client-provided identity.
-- Authentication must be handled by Better Auth.
+- Authentication uses an HMAC-signed token (node:crypto) stored in an httpOnly cookie, with passwords hashed via bcryptjs.
 - Session expiration must be enforced.
 - Support secure logout from all devices in the future.
 

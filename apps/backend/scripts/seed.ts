@@ -21,18 +21,7 @@ async function seed() {
     [systemTenantId, "system", "System"],
   );
 
-  // Better Auth tables
-  await pool.query(
-    `INSERT INTO "user" (id, name, email, email_verified) VALUES ($1, $2, $3, $4) ON CONFLICT (email) DO NOTHING`,
-    [userId, "Super Admin", "admin@celebra.com", true],
-  );
-
-  await pool.query(
-    `INSERT INTO account (id, user_id, provider_id, account_id, password) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO NOTHING`,
-    [userId, userId, "credential", userId, hash],
-  );
-
-  // Business users table
+  // Business users table (password already hashed with bcryptjs)
   await pool.query(
     `INSERT INTO users (id, tenant_id, name, email, password_hash, role) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (tenant_id, email) DO NOTHING`,
     [userId, systemTenantId, "Super Admin", "admin@celebra.com", hash, "super_admin"],

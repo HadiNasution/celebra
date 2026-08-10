@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
-import { Pool } from "pg";
 import { randomUUID } from "crypto";
+import * as bcrypt from "bcryptjs";
+import { rawPool } from "../db/connection";
 import { PLAN_MONTHS, type Plan } from "../checkout/dto/create-checkout.dto";
 
 type Payment = {
@@ -11,18 +12,12 @@ type Payment = {
   plan: string;
 };
 
-const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
-
-// ponytail: raw pg pool bypasses drizzle prepared statement SCRAM auth bug
-const rawPool = new Pool({
-  connectionString: process.env.DATABASE_URL ?? "postgres://celebra:celebra@localhost:5432/celebra",
-});
-
 @Injectable()
 export class TenantService {
   async createTenantOnPayment(payment: Payment) {
     const slug = this.slugify(payment.user_name);
     const password = randomUUID().slice(0, 12);
+    const passwordHash = await bcrypt.hash(password, 10);
     const tenantId = randomUUID();
     const userId = randomUUID();
     const subId = randomUUID();
@@ -44,7 +39,7 @@ export class TenantService {
       await client.query(
         `INSERT INTO users (id, tenant_id, name, email, phone, password_hash, role)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [userId, tenantId, payment.user_name, payment.user_email, payment.user_phone ?? null, "", "owner"],
+        [userId, tenantId, payment.user_name, payment.user_email.toLowerCase(), payment.user_phone ?? null, passwordHash, "owner"],
       );
 
       await client.query(
@@ -70,37 +65,6 @@ export class TenantService {
       throw err;
     } finally {
       client.release();
-    }
-
-    // ponytail: use Better Auth's sign-up API for proper password hashing
-    const res = await fetch(`${frontendUrl}/api/auth/sign-up/email`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Origin: frontendUrl,
-      },
-      body: JSON.stringify({
-        email: payment.user_email,
-        password,
-        name: payment.user_name,
-      }),
-    });
-
-    const body = await res.json() as Record<string, unknown>;
-    // ponytail: retry with cleanup if user exists from prior test run
-    if (!res.ok && body.code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL") {
-      await rawPool.query(`DELETE FROM account WHERE user_id = (SELECT id FROM "user" WHERE email = $1)`, [payment.user_email]);
-      await rawPool.query(`DELETE FROM "user" WHERE email = $1`, [payment.user_email]);
-      const retry = await fetch(`${frontendUrl}/api/auth/sign-up/email`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Origin: frontendUrl },
-        body: JSON.stringify({ email: payment.user_email, password, name: payment.user_name }),
-      });
-      if (!retry.ok) {
-        throw new Error(`Better Auth sign-up retry failed: ${await retry.text()}`);
-      }
-    } else if (!res.ok) {
-      throw new Error(`Better Auth sign-up failed: ${JSON.stringify(body)}`);
     }
 
     return { tenant: { id: tenantId, name: payment.user_name, slug }, password, slug };

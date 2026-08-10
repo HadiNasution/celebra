@@ -5,10 +5,8 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
-import { eq, gt, and } from "drizzle-orm";
-import { db } from "../../db/connection";
-import { authSession, authUser, users } from "../../db/schema";
 import { IS_PUBLIC_KEY } from "../decorators/public.decorator";
+import { readAuthCookie, verifyToken } from "../../auth/token";
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -22,37 +20,18 @@ export class AuthGuard implements CanActivate {
     if (isPublic) return true;
 
     const request = context.switchToHttp().getRequest();
-    const cookie: string = request.headers.cookie ?? "";
-    const match = cookie.match(/better-auth\.session_token=([^;]+)/);
-    const token = match?.[1];
+    const token = readAuthCookie(request.headers.cookie);
 
     if (!token) throw new UnauthorizedException("Missing session token");
 
-    const session = await db
-      .select({
-        userId: authSession.userId,
-        email: authUser.email,
-      })
-      .from(authSession)
-      .innerJoin(authUser, eq(authSession.userId, authUser.id))
-      .where(
-        and(eq(authSession.token, token), gt(authSession.expiresAt, new Date())),
-      )
-      .limit(1);
-
-    if (session.length === 0) throw new UnauthorizedException("Invalid session");
-
-    const businessUser = await db
-      .select({ role: users.role, tenantId: users.tenantId, id: users.id })
-      .from(users)
-      .where(eq(users.email, session[0]!.email))
-      .limit(1);
+    const payload = verifyToken(token);
+    if (!payload) throw new UnauthorizedException("Invalid or expired session");
 
     request.user = {
-      id: session[0]!.userId,
-      email: session[0]!.email,
-      role: businessUser[0]?.role ?? "super_admin",
-      tenantId: businessUser[0]?.tenantId ?? null,
+      id: payload.id,
+      email: payload.email,
+      role: payload.role,
+      tenantId: payload.tenantId,
     };
 
     return true;

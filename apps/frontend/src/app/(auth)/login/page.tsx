@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signIn } from "@/lib/auth-client";
+import { loginAction } from "../actions";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,18 +17,18 @@ export default function LoginPage() {
 
     const formData = new FormData(e.currentTarget);
 
-    const result = await signIn.email({
-      email: formData.get("email") as string,
-      password: formData.get("password") as string,
-    });
+    const result = await loginAction(
+      formData.get("email") as string,
+      formData.get("password") as string,
+    );
 
     if (result.error) {
-      setError("Invalid email or password.");
+      setError(result.error);
       setLoading(false);
       return;
     }
 
-    router.push("/dashboard");
+    router.push(result.role === "super_admin" ? "/admin" : "/dashboard");
     router.refresh();
   }
 

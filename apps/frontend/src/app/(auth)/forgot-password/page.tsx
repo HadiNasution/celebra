@@ -16,12 +16,10 @@ export default function ForgotPasswordPage() {
     const formData = new FormData(e.currentTarget);
     const email = formData.get("email") as string;
 
-    const res = await fetch("/api/auth/request-password-reset", {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
+    const res = await fetch(`${apiUrl}/auth/forgot-password`, {
       method: "POST",
-      body: JSON.stringify({
-        email,
-        redirectTo: `${window.location.origin}/reset-password`,
-      }),
+      body: JSON.stringify({ email }),
       headers: { "Content-Type": "application/json" },
     });
 
