@@ -27,6 +27,7 @@ export default function GuestsPage() {
 
   const [guests, setGuests] = useState<Guest[]>([]);
   const [roles, setRoles] = useState<GuestRole[]>([]);
+  const [inviteSlug, setInviteSlug] = useState("");
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [error, setError] = useState("");
@@ -49,6 +50,13 @@ export default function GuestsPage() {
       .then((r) => r.json())
       .then(setRoles);
   }, [apiUrl]);
+
+  useEffect(() => {
+    fetch(`${apiUrl}/invitations/${invitationId}`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => setInviteSlug(d.invitation?.slug ?? ""))
+      .catch(() => {});
+  }, [apiUrl, invitationId]);
 
   useEffect(load, [load]);
 
@@ -304,7 +312,7 @@ export default function GuestsPage() {
                 </td>
                 <td className="px-4 py-3">
                   <a
-                    href={`/${slug}?guest=${g.token}`}
+                    href={`/${inviteSlug}?guest=${g.token}`}
                     target="_blank"
                     rel="noreferrer"
                     className="text-primary hover:underline"

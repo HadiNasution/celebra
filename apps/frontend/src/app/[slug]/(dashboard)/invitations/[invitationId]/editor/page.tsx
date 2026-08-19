@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { renderTemplate, setInPath } from "@/lib/render";
+import { renderTemplate, setInPath, assembleHtml } from "@/lib/render";
 import { FormPanel } from "./form-panel";
 
 type EditorData = {
@@ -102,7 +102,14 @@ export default function EditorPage() {
   }
 
   const renderedHtml = useMemo(
-    () => (data ? renderTemplate(data.htmlBundle, content) : ""),
+    () =>
+      data
+        ? assembleHtml(
+            renderTemplate(data.htmlBundle, content),
+            data.cssBundle ?? null,
+            data.jsBundle ?? null,
+          )
+        : "",
     [data, content],
   );
 
@@ -200,7 +207,7 @@ export default function EditorPage() {
             Published version {published.version}.
           </span>
           <span className="text-text-secondary">
-            Public URL: /{data.invitation.slug} (public invitation rendering arrives in Step 8)
+            Public URL: /{data.invitation.slug}
           </span>
         </div>
       )}

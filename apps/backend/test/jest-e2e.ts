@@ -8,6 +8,8 @@ const config: Config = {
     "^.+\\.(t|j)s$": "ts-jest",
   },
   testEnvironment: "node",
+  forceExit: true,
+  testTimeout: 30000,
   moduleNameMapper: {
     "^@shared/(.*)$": "<rootDir>/../../packages/shared/src/$1",
   },

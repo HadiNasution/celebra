@@ -26,7 +26,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (!r.ok) throw new Error("unauthorized");
         return r.json();
       })
-      .then(() => setLoading(false))
+      .then((me) => {
+        if (me.user.role !== "super_admin") {
+          router.replace(me.user.tenantSlug ? `/${me.user.tenantSlug}/dashboard` : "/login");
+          return;
+        }
+        setLoading(false);
+      })
       .catch(() => router.push("/login"));
   }, [router]);
 

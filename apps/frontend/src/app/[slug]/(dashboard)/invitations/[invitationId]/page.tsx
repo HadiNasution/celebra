@@ -142,9 +142,18 @@ export default function InvitationDetailPage() {
         )}
       </div>
 
-      <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-text-secondary">
-        Public invitation rendering arrives in Step 8.
-      </div>
+      {inv.invitation.status === "published" && !inv.invitation.deletedAt && (
+        <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-text-secondary">
+          <a
+            href={`/${inv.invitation.slug}`}
+            target="_blank"
+            rel="noreferrer"
+            className="text-primary hover:underline"
+          >
+            Open public invitation →
+          </a>
+        </div>
+      )}
 
       {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
     </div>

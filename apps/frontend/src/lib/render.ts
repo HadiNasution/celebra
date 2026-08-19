@@ -7,6 +7,14 @@ export function renderTemplate(html: string, content: Record<string, unknown>): 
   });
 }
 
+export function assembleHtml(body: string, css: string | null, js: string | null): string {
+  return [
+    body,
+    css ? `<style>${css}</style>` : "",
+    js ? `<script>${js}</script>` : "",
+  ].join("\n");
+}
+
 function getByPath(obj: unknown, path: string): unknown {
   let current: unknown = obj;
   for (const key of path.split(".")) {

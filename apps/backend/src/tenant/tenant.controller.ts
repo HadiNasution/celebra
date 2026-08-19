@@ -1,12 +1,12 @@
-import { Controller, Get, Param } from "@nestjs/common";
+import { Controller, Get, Param, UseGuards } from "@nestjs/common";
 import { TenantService } from "./tenant.service";
-import { Public } from "../common/decorators/public.decorator";
+import { TenantGuard } from "../common/guards/tenant.guard";
 
 @Controller("tenants")
 export class TenantController {
   constructor(private readonly tenantService: TenantService) {}
 
-  @Public()
+  @UseGuards(TenantGuard)
   @Get(":slug")
   findBySlug(@Param("slug") slug: string) {
     return this.tenantService.findBySlug(slug);

@@ -4,7 +4,7 @@ import { randomUUID } from "crypto";
 import { db, rawPool } from "../db/connection";
 import { RedisService } from "../redis/redis.service";
 import { auditLogs, invitationContents, invitations, publishHistories, templates } from "../db/schema";
-import { renderTemplate } from "./renderer";
+import { assembleHtml, renderTemplate } from "./renderer";
 
 export type InvitationUser = {
   id: string;
@@ -108,12 +108,11 @@ export class InvitationService {
     const contentJson = (content?.contentJson ?? {}) as Record<string, unknown>;
     if (template) this.validateContent(template.jsonSchema, contentJson);
 
-    const body = renderTemplate(template?.htmlBundle ?? "", contentJson);
-    const publishedHtml = [
-      body,
-      template?.cssBundle ? `<style>${template.cssBundle}</style>` : "",
-      template?.jsBundle ? `<script>${template.jsBundle}</script>` : "",
-    ].join("\n");
+    const publishedHtml = assembleHtml(
+      renderTemplate(template?.htmlBundle ?? "", contentJson),
+      template?.cssBundle ?? null,
+      template?.jsBundle ?? null,
+    );
 
     const [history] = await db
       .select({ value: count() })
@@ -164,7 +163,7 @@ export class InvitationService {
       .limit(1);
     if (!template) throw new NotFoundException("Template not found");
 
-    const slug = await this.uniqueSlug(user.tenantId!, this.slugify(data.slug ?? data.title));
+    const slug = await this.uniqueSlug(this.slugify(data.slug ?? data.title));
     const invitationId = randomUUID();
     const contentJson = this.defaultsFromSchema(template.jsonSchema);
 
@@ -206,7 +205,7 @@ export class InvitationService {
       .where(eq(invitationContents.invitationId, id))
       .limit(1);
 
-    const slug = await this.uniqueSlug(user.tenantId!, `${source.slug}-copy`);
+    const slug = await this.uniqueSlug(`${source.slug}-copy`);
     const newId = randomUUID();
 
     const client = await rawPool.connect();
@@ -312,15 +311,15 @@ export class InvitationService {
     );
   }
 
-  private async uniqueSlug(tenantId: string, base: string): Promise<string> {
+  private async uniqueSlug(base: string): Promise<string> {
     let slug = base;
     let n = 2;
-    // ponytail: loop is fine for MVP; a generated indexed slug rarely collides
+    // ponytail: global slug since public URL = invitation slug; DB constraint is still (tenant_id, slug)
     while (true) {
       const existing = await db
         .select({ id: invitations.id })
         .from(invitations)
-        .where(and(eq(invitations.tenantId, tenantId), eq(invitations.slug, slug)))
+        .where(eq(invitations.slug, slug))
         .limit(1);
       if (existing.length === 0) return slug;
       slug = `${base}-${n++}`;

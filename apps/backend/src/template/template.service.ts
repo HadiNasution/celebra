@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { db } from "../db/connection";
-import { templates, categories } from "../db/schema";
+import { templates } from "../db/schema";
 import { eq, and } from "drizzle-orm";
 
 @Injectable()

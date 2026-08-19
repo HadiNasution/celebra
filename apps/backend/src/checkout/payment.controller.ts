@@ -16,7 +16,6 @@ export class PaymentController {
   @Public()
   @Post()
   async create(@Body() dto: CreateCheckoutDto) {
-    console.log("[Checkout]", dto.email, dto.plan);
     return this.paymentService.createCheckout(dto);
   }
 
@@ -25,12 +24,14 @@ export class PaymentController {
   async mockConfirm(@Body() body: { paymentId: string }) {
     const payment = await this.paymentService.handlePaidCallback(body.paymentId);
     const result = await this.tenantService.createTenantOnPayment(payment);
-    await this.notificationService.sendCredentials(
-      payment.user_email,
-      payment.user_name,
-      result.password,
-      result.slug,
-    );
+    if (!result.alreadyProvisioned && result.slug && result.password) {
+      await this.notificationService.sendCredentials(
+        payment.user_email,
+        payment.user_name,
+        result.password,
+        result.slug,
+      );
+    }
     return { ok: true, email: payment.user_email, slug: result.slug };
   }
 
@@ -49,12 +50,14 @@ export class PaymentController {
 
     const payment = await this.paymentService.handlePaidCallback(body.id);
     const result = await this.tenantService.createTenantOnPayment(payment);
-    await this.notificationService.sendCredentials(
-      payment.user_email,
-      payment.user_name,
-      result.password,
-      result.slug,
-    );
+    if (!result.alreadyProvisioned && result.slug && result.password) {
+      await this.notificationService.sendCredentials(
+        payment.user_email,
+        payment.user_name,
+        result.password,
+        result.slug,
+      );
+    }
 
     return { ok: true };
   }

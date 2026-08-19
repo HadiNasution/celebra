@@ -1,7 +1,7 @@
-import { Injectable } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { db } from "../db/connection";
-import { tenants, users, subscriptions } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { auditLogs, tenants, users, subscriptions } from "../db/schema";
+import { and, eq, ne } from "drizzle-orm";
 
 @Injectable()
 export class AdminCustomersService {
@@ -19,5 +19,29 @@ export class AdminCustomersService {
     const [sub] = await db.select().from(subscriptions).where(eq(subscriptions.tenantId, id)).limit(1);
 
     return { ...tenant, users: tenantUsers, subscription: sub ?? null };
+  }
+
+  async update(id: string, data: { name?: string; slug?: string }) {
+    if (data.slug) {
+      const [existing] = await db
+        .select({ id: tenants.id })
+        .from(tenants)
+        .where(and(eq(tenants.slug, data.slug), ne(tenants.id, id)))
+        .limit(1);
+      if (existing) throw new ConflictException("Slug is already in use");
+    }
+
+    const [tenant] = await db.update(tenants).set(data).where(eq(tenants.id, id)).returning();
+    if (!tenant) throw new NotFoundException("Tenant not found");
+
+    await db.insert(auditLogs).values({
+      tenantId: tenant.id,
+      action: "tenant.updated",
+      entity: "tenant",
+      entityId: tenant.id,
+      metadata: data,
+    });
+
+    return tenant;
   }
 }

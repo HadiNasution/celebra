@@ -1,5 +1,6 @@
-import { Controller, Get, Param, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Query, UseGuards } from "@nestjs/common";
 import { AdminCustomersService } from "./admin-customers.service";
+import { UpdateTenantDto } from "./admin.dto";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
 
@@ -17,5 +18,10 @@ export class AdminCustomersController {
   @Get(":id")
   findOne(@Param("id") id: string) {
     return this.customersService.findOne(id);
+  }
+
+  @Patch(":id")
+  update(@Param("id") id: string, @Body() dto: UpdateTenantDto) {
+    return this.customersService.update(id, dto);
   }
 }

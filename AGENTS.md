@@ -148,7 +148,7 @@ Puppeteer
 ---
 
 ## 12. Authentication
-Better Auth / Auth.js
+In-house HMAC-signed token (node:crypto) in an httpOnly cookie, passwords hashed with bcryptjs. Stateless (no session table).
 - Authenticate every protected endpoint.
 - Authorize access explicitly.
 - Never trust client-provided authorization data.

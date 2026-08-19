@@ -6,6 +6,7 @@ import { PLAN_MONTHS, type Plan } from "../checkout/dto/create-checkout.dto";
 
 type Payment = {
   id: string;
+  tenant_id: string | null;
   user_email: string;
   user_name: string;
   user_phone: string | null;
@@ -15,6 +16,13 @@ type Payment = {
 @Injectable()
 export class TenantService {
   async createTenantOnPayment(payment: Payment) {
+    if (payment.tenant_id) {
+      const { rows } = await rawPool.query(`SELECT slug FROM tenants WHERE id = $1`, [
+        payment.tenant_id,
+      ]);
+      return { alreadyProvisioned: true, slug: rows[0]?.slug ?? null, password: null };
+    }
+
     const slug = this.slugify(payment.user_name);
     const password = randomUUID().slice(0, 12);
     const passwordHash = await bcrypt.hash(password, 10);
@@ -67,7 +75,7 @@ export class TenantService {
       client.release();
     }
 
-    return { tenant: { id: tenantId, name: payment.user_name, slug }, password, slug };
+    return { alreadyProvisioned: false, tenant: { id: tenantId, name: payment.user_name, slug }, password, slug };
   }
 
   async findBySlug(slug: string) {

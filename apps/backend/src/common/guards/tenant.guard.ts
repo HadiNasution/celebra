@@ -4,38 +4,31 @@ import {
   ExecutionContext,
   ForbiddenException,
 } from "@nestjs/common";
+import { eq } from "drizzle-orm";
 import { db } from "../../db/connection";
 import { tenants } from "../../db/schema";
-import { eq } from "drizzle-orm";
 
+// Resolves tenant from the :slug route param and asserts the authenticated
+// user belongs to it. super_admin skips the check.
 @Injectable()
 export class TenantGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const user = request.user;
-
-    if (!user) return true;
-
-    if (user.role === "super_admin") {
-      if (user.tenantId === null) return true;
-    }
-
-    const slug = request.params?.slug;
+    const slug = request.params.slug as string | undefined;
     if (!slug) return true;
 
-    const tenant = await db
+    const [tenant] = await db
       .select({ id: tenants.id })
       .from(tenants)
       .where(eq(tenants.slug, slug))
       .limit(1);
+    if (!tenant) throw new ForbiddenException("Tenant not found");
 
-    if (tenant.length === 0) throw new ForbiddenException("Tenant not found");
-
-    if (user.tenantId !== tenant[0]!.id) {
-      throw new ForbiddenException("Access denied to this tenant");
+    const user = request.user as { role: string; tenantId: string | null };
+    if (user.role === "super_admin") return true;
+    if (user.tenantId !== tenant.id) {
+      throw new ForbiddenException("You do not have access to this tenant");
     }
-
-    request.tenantId = tenant[0]!.id;
     return true;
   }
 }
