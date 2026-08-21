@@ -9,7 +9,7 @@ type FormPanelProps = {
 };
 
 const inputClass =
-  "mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm outline-none focus:border-primary/50";
+  "flex h-9 w-full rounded-md border border-dash-input bg-dash-card px-3 py-1 text-sm shadow-sm transition-all duration-200 placeholder:text-dash-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-ring focus-visible:ring-offset-2";
 
 export function FormPanel({ schema, content, onChange }: FormPanelProps) {
   return (
@@ -52,7 +52,7 @@ function SchemaNode({
 
   return (
     <fieldset>
-      <legend className="mb-3 text-xs font-semibold uppercase tracking-wide text-primary">
+      <legend className="mb-3 text-xs font-semibold uppercase tracking-wide text-dash-muted-foreground">
         {label ?? path[path.length - 1]}
       </legend>
       <div className="space-y-4">
@@ -114,7 +114,7 @@ function FieldRenderer({
         <Label label={label} field={field}>
           <input
             type="color"
-            className="mt-1 h-10 w-full cursor-pointer rounded-xl border border-white/10 bg-white/5"
+            className="mt-1 h-10 w-full cursor-pointer rounded-md border border-dash-input bg-dash-card p-1"
             value={(value as string) ?? "#000000"}
             onChange={(e) => onChange(path, e.target.value)}
           />
@@ -146,7 +146,7 @@ function FieldRenderer({
             <img
               src={value}
               alt={label}
-              className="mt-2 h-24 w-full rounded-lg object-cover"
+              className="mt-2 h-24 w-full rounded-md object-cover"
             />
           )}
         </Label>
@@ -206,7 +206,7 @@ function GalleryField({
             <button
               type="button"
               onClick={() => onChange(path, items.filter((_, j) => j !== i))}
-              className="shrink-0 rounded-lg border border-red-400/40 px-2 py-1 text-xs text-red-400 hover:bg-red-400/10"
+              className="shrink-0 rounded-md border border-dash-input px-2 py-1 text-xs text-dash-destructive transition-colors duration-200 hover:bg-dash-destructive hover:text-dash-destructive-foreground"
             >
               Remove
             </button>
@@ -215,7 +215,7 @@ function GalleryField({
         <button
           type="button"
           onClick={() => onChange(path, [...items, ""])}
-          className="rounded-lg border border-white/20 px-3 py-1 text-xs hover:bg-white/5"
+          className="rounded-md border border-dash-border px-3 py-1 text-xs text-dash-muted-foreground transition-colors duration-200 hover:bg-dash-accent hover:text-dash-foreground"
         >
           + Add image URL
         </button>
@@ -243,7 +243,7 @@ function MapField({
   return (
     <Label label={label} field={path[path.length - 1]}>
       <div className="grid grid-cols-2 gap-2">
-        <label className="text-xs text-text-secondary">
+        <label className="text-xs text-dash-muted-foreground">
           Latitude
           <input
             type="number"
@@ -253,7 +253,7 @@ function MapField({
             onChange={(e) => onChange(path, { lat: Number(e.target.value), lng: map.lng })}
           />
         </label>
-        <label className="text-xs text-text-secondary">
+        <label className="text-xs text-dash-muted-foreground">
           Longitude
           <input
             type="number"

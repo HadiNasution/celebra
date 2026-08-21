@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 type SubRow = {
   subscriptions: {
@@ -24,72 +27,67 @@ export default function AdminSubscriptionsPage() {
       .then(setData);
   }, []);
 
+  async function runAction(id: string, action: "activate" | "cancel") {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
+    await fetch(`${apiUrl}/admin/subscriptions/${id}/${action}`, {
+      method: "POST",
+      credentials: "include",
+    });
+    location.reload();
+  }
+
   return (
     <div>
-      <h1 className="font-display text-2xl font-medium">Subscriptions</h1>
-      <div className="mt-6 overflow-x-auto">
+      <h1 className="text-xl font-semibold tracking-tight">Subscriptions</h1>
+      <Card className="mt-6 overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-white/10 text-text-secondary">
-              <th className="pb-3 pr-4">Tenant</th>
-              <th className="pb-3 pr-4">Plan</th>
-              <th className="pb-3 pr-4">Status</th>
-              <th className="pb-3 pr-4">Expires</th>
-              <th className="pb-3">Actions</th>
+            <tr className="border-b border-dash-border text-dash-muted-foreground">
+              <th className="px-6 py-3 font-medium">Tenant</th>
+              <th className="px-6 py-3 font-medium">Plan</th>
+              <th className="px-6 py-3 font-medium">Status</th>
+              <th className="px-6 py-3 font-medium">Expires</th>
+              <th className="px-6 py-3 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {data.map((row, i) => (
-              <tr key={i} className="border-b border-white/5">
-                <td className="py-3 pr-4">{row.tenants.name}</td>
-                <td className="py-3 pr-4">{row.subscriptions.plan}</td>
-                <td className="py-3 pr-4">
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${
-                    row.subscriptions.status === "active"
-                      ? "bg-green-500/20 text-green-400"
-                      : "bg-red-500/20 text-red-400"
-                  }`}>
+            {data.map((row) => (
+              <tr key={row.subscriptions.id} className="border-b border-dash-border last:border-0">
+                <td className="px-6 py-3">{row.tenants.name}</td>
+                <td className="px-6 py-3">{row.subscriptions.plan}</td>
+                <td className="px-6 py-3">
+                  <Badge variant={row.subscriptions.status === "active" ? "success" : "destructive"}>
                     {row.subscriptions.status}
-                  </span>
+                  </Badge>
                 </td>
-                <td className="py-3 pr-4">
+                <td className="px-6 py-3 text-dash-muted-foreground">
                   {row.subscriptions.expiredAt
                     ? new Date(row.subscriptions.expiredAt).toLocaleDateString()
                     : "—"}
                 </td>
-                <td className="py-3 space-x-2">
-                  <button
-                    onClick={async () => {
-                      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
-                      await fetch(`${apiUrl}/admin/subscriptions/${row.subscriptions.id}/activate`, {
-                        method: "POST",
-                        credentials: "include",
-                      });
-                      location.reload();
-                    }}
-                    className="text-xs text-green-400 hover:underline"
-                  >
-                    Activate
-                  </button>
-                  <button
-                    onClick={async () => {
-                      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
-                      await fetch(`${apiUrl}/admin/subscriptions/${row.subscriptions.id}/cancel`, {
-                        method: "POST",
-                        credentials: "include",
-                      });
-                      location.reload();
-                    }}
-                    className="text-xs text-red-400 hover:underline"
-                  >
-                    Cancel
-                  </button>
+                <td className="px-6 py-3">
+                  <div className="flex gap-2">
+                    {row.subscriptions.status !== "active" && (
+                      <Button variant="outline" size="sm" onClick={() => runAction(row.subscriptions.id, "activate")}>
+                        Activate
+                      </Button>
+                    )}
+                    {row.subscriptions.status === "active" && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => runAction(row.subscriptions.id, "cancel")}
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
     </div>
   );
 }

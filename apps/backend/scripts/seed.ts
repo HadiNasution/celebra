@@ -42,7 +42,7 @@ async function seed() {
     [categoryId, "Wedding", "wedding"],
   );
 
-  const templateId = "00000000-0000-0000-0000-00000000t001";
+  const templateId = "00000000-0000-0000-0000-00000000a001";
   const jsonSchema = {
     hero: {
       title: { type: "text", label: "Title", required: true, default: "Our Wedding" },

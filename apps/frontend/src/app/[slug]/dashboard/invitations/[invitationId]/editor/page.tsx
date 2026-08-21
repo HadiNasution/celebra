@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { ArrowLeft, Monitor, Smartphone, X } from "lucide-react";
 import { renderTemplate, setInPath, assembleHtml } from "@/lib/render";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { FormPanel } from "./form-panel";
 
 type EditorData = {
@@ -116,42 +119,45 @@ export default function EditorPage() {
   if (error && !data) {
     return (
       <div>
-        <p className="text-red-400">{error}</p>
+        <p className="text-sm text-dash-destructive">{error}</p>
         <Link
           href={`/${slug}/dashboard/invitations/${invitationId}`}
-          className="mt-4 inline-block text-sm text-text-secondary hover:text-white"
+          className="mt-4 inline-flex items-center gap-1 text-sm text-dash-muted-foreground transition-colors duration-200 hover:text-dash-foreground"
         >
-          ← Back
+          <ArrowLeft className="size-4" /> Back
         </Link>
       </div>
     );
   }
 
   if (!data) {
-    return <p className="text-text-secondary">Loading...</p>;
+    return <p className="animate-pulse text-sm text-dash-muted-foreground">Loading...</p>;
   }
 
   const isPublished = data.invitation.status === "published";
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col">
-      <header className="flex items-center gap-4 border-b border-white/10 px-6 py-3">
+    <div className="flex h-[calc(100dvh-3rem)] flex-col lg:h-[calc(100vh-4rem)]">
+      <header className="flex items-center gap-4 border-b border-dash-border bg-dash-card px-4 py-3 lg:px-6">
         <Link
           href={`/${slug}/dashboard/invitations/${invitationId}`}
-          className="text-sm text-text-secondary hover:text-white"
+          className="inline-flex items-center gap-1 text-sm text-dash-muted-foreground transition-colors duration-200 hover:text-dash-foreground"
         >
-          ← Back
+          <ArrowLeft className="size-4" /> Back
         </Link>
-        <h1 className="font-display text-lg font-medium">{data.invitation.title}</h1>
+        <h1 className="truncate text-sm font-semibold tracking-tight lg:text-base">
+          {data.invitation.title}
+        </h1>
         <div className="ml-auto flex items-center gap-3">
           <span
-            className={`text-xs ${
+            className={cn(
+              "text-xs",
               saveState === "error"
-                ? "text-red-400"
+                ? "text-dash-destructive"
                 : saveState === "saving"
-                  ? "text-text-secondary"
-                  : "text-green-400"
-            }`}
+                  ? "text-dash-muted-foreground"
+                  : "text-emerald-700",
+            )}
           >
             {saveState === "saving"
               ? "Saving..."
@@ -163,14 +169,14 @@ export default function EditorPage() {
           </span>
           <button
             onClick={() => setPreviewOpen(true)}
-            className="rounded-full border border-white/20 px-4 py-1.5 text-sm hover:bg-white/5"
+            className={buttonVariants({ variant: "outline", size: "sm" })}
           >
             Preview
           </button>
           <button
             onClick={handlePublish}
             disabled={publishing || isPublished}
-            className="rounded-full bg-primary px-4 py-1.5 text-sm font-semibold text-secondary hover:opacity-90 disabled:opacity-50"
+            className={buttonVariants({ size: "sm" })}
           >
             {isPublished ? "Published" : publishing ? "Publishing..." : "Publish"}
           </button>
@@ -178,66 +184,54 @@ export default function EditorPage() {
       </header>
 
       {isPublished && (
-        <div className="border-b border-amber-400/20 bg-amber-400/10 px-6 py-2 text-sm text-amber-300">
+        <div className="border-b border-amber-200 bg-amber-50 px-6 py-2 text-sm text-amber-800">
           This invitation is published and locked. Duplicate it to edit and publish a new version.
         </div>
       )}
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="w-80 shrink-0 overflow-y-auto border-r border-white/10">
-          <FormPanel
-            schema={data.schema}
-            content={content}
-            onChange={handleChange}
-          />
+        <div className="w-full shrink-0 overflow-y-auto border-r border-dash-border lg:w-80">
+          <FormPanel schema={data.schema} content={content} onChange={handleChange} />
         </div>
         <iframe
           title="Template preview"
           sandbox="allow-scripts allow-same-origin"
           srcDoc={renderedHtml}
-          className="flex-1 border-0 bg-white"
+          className="hidden flex-1 border-0 bg-white lg:block"
         />
       </div>
 
-      {error && <p className="px-6 py-2 text-sm text-red-400">{error}</p>}
+      {error && <p className="px-6 py-2 text-sm text-dash-destructive">{error}</p>}
 
       {published && (
-        <div className="flex items-center gap-4 border-t border-white/10 px-6 py-3 text-sm">
-          <span className="text-green-400">
-            Published version {published.version}.
-          </span>
-          <span className="text-text-secondary">
-            Public URL: /{data.invitation.slug}
-          </span>
+        <div className="flex flex-wrap items-center gap-4 border-t border-dash-border bg-dash-card px-6 py-3 text-sm">
+          <span className="text-emerald-700">Published version {published.version}.</span>
+          <span className="text-dash-muted-foreground">Public URL: /{data.invitation.slug}</span>
         </div>
       )}
 
       {previewOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-black/70">
-          <div className="flex items-center gap-3 border-b border-white/10 bg-secondary px-6 py-3">
-            <h2 className="font-display text-lg font-medium">Preview</h2>
+        <div className="fixed inset-0 z-50 flex flex-col bg-dash-background/95 backdrop-blur-sm">
+          <div className="flex items-center gap-3 border-b border-dash-border bg-dash-card px-6 py-3">
+            <h2 className="text-sm font-semibold tracking-tight">Preview</h2>
             <div className="ml-auto flex items-center gap-2">
               <button
                 onClick={() => setPreviewMobile(false)}
-                className={`rounded-full px-3 py-1 text-xs ${
-                  !previewMobile ? "bg-primary text-secondary" : "text-text-secondary"
-                }`}
+                className={buttonVariants({ variant: !previewMobile ? "default" : "ghost", size: "sm" })}
               >
-                Desktop
+                <Monitor /> Desktop
               </button>
               <button
                 onClick={() => setPreviewMobile(true)}
-                className={`rounded-full px-3 py-1 text-xs ${
-                  previewMobile ? "bg-primary text-secondary" : "text-text-secondary"
-                }`}
+                className={buttonVariants({ variant: previewMobile ? "default" : "ghost", size: "sm" })}
               >
-                Mobile
+                <Smartphone /> Mobile
               </button>
               <button
                 onClick={() => setPreviewOpen(false)}
-                className="rounded-full border border-white/20 px-4 py-1 text-sm hover:bg-white/5"
+                className={buttonVariants({ variant: "outline", size: "sm" })}
               >
-                Close
+                <X /> Close
               </button>
             </div>
           </div>
@@ -246,7 +240,7 @@ export default function EditorPage() {
               title="Preview"
               sandbox="allow-scripts allow-same-origin"
               srcDoc={renderedHtml}
-              className="border-0 bg-white shadow-2xl transition-all"
+              className="border-0 bg-white shadow-2xl transition-all duration-300"
               style={{ width: previewMobile ? 375 : 1440, height: 900 }}
             />
           </div>

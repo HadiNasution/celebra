@@ -3,7 +3,7 @@ import * as bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { eq } from "drizzle-orm";
 import { db, rawPool } from "../db/connection";
-import { tenants } from "../db/schema";
+import { auditLogs, tenants } from "../db/schema";
 import { RedisService } from "../redis/redis.service";
 import { assertRateLimit } from "../common/rate-limit";
 import { signToken, type AuthUser } from "./token";
@@ -46,6 +46,25 @@ export class AuthService {
   async me(user: AuthUser) {
     const tenantSlug = await this.resolveTenantSlug(user.tenantId);
     return { user: { ...user, tenantSlug } };
+  }
+
+  async changePassword(user: AuthUser, newPassword: string) {
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await rawPool.query(
+      `UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2`,
+      [passwordHash, user.id],
+    );
+
+    if (user.tenantId) {
+      await db.insert(auditLogs).values({
+        tenantId: user.tenantId,
+        userId: user.id,
+        action: "auth.password_changed",
+        entity: "user",
+        entityId: user.id,
+      });
+    }
+    return { ok: true };
   }
 
   private async resolveTenantSlug(tenantId: string | null): Promise<string | null> {

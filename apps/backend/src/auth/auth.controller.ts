@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, Post, Req } from "@nestjs/common";
 import { Request } from "express";
 import { Public } from "../common/decorators/public.decorator";
 import { AuthService } from "./auth.service";
-import { ForgotPasswordDto, LoginDto } from "./dto/login.dto";
+import { ChangePasswordDto, ForgotPasswordDto, LoginDto } from "./dto/login.dto";
 import { AuthUser } from "./token";
 
 @Controller("auth")
@@ -27,5 +27,14 @@ export class AuthController {
   @Get("me")
   me(@Req() req: Request & { user: AuthUser }) {
     return this.authService.me(req.user);
+  }
+
+  @Post("change-password")
+  @HttpCode(200)
+  changePassword(
+    @Req() req: Request & { user: AuthUser },
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(req.user, dto.newPassword);
   }
 }

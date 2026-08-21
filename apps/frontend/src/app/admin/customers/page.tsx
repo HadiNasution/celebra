@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Card } from "@/components/ui/card";
 
 type Tenant = {
   id: string;
@@ -22,31 +23,36 @@ export default function AdminCustomersPage() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-medium">Customers</h1>
-      <div className="mt-6 overflow-x-auto">
+      <h1 className="text-xl font-semibold tracking-tight">Customers</h1>
+      <Card className="mt-6 overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-white/10 text-text-secondary">
-              <th className="pb-3 pr-4">Name</th>
-              <th className="pb-3 pr-4">Slug</th>
-              <th className="pb-3">Created</th>
+            <tr className="border-b border-dash-border text-dash-muted-foreground">
+              <th className="px-6 py-3 font-medium">Name</th>
+              <th className="px-6 py-3 font-medium">Slug</th>
+              <th className="px-6 py-3 font-medium">Created</th>
             </tr>
           </thead>
           <tbody>
             {data.map((t) => (
-              <tr key={t.id} className="border-b border-white/5 hover:bg-white/5">
-                <td className="py-3 pr-4">
-                  <Link href={`/admin/customers/${t.id}`} className="text-primary hover:underline">
+              <tr key={t.id} className="border-b border-dash-border transition-colors duration-150 last:border-0 hover:bg-dash-muted/50">
+                <td className="px-6 py-3">
+                  <Link
+                    href={`/admin/customers/${t.id}`}
+                    className="font-medium text-dash-foreground underline-offset-4 transition-colors duration-200 hover:text-dash-primary hover:underline"
+                  >
                     {t.name}
                   </Link>
                 </td>
-                <td className="py-3 pr-4">{t.slug}</td>
-                <td className="py-3">{new Date(t.createdAt).toLocaleDateString()}</td>
+                <td className="px-6 py-3 text-dash-muted-foreground">{t.slug}</td>
+                <td className="px-6 py-3 text-dash-muted-foreground">
+                  {new Date(t.createdAt).toLocaleDateString()}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
     </div>
   );
 }

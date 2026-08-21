@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { ArrowLeft, Upload, Search } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 type GuestRole = { id: string; name: string };
 
@@ -18,6 +23,9 @@ type Guest = {
   rsvpGuestCount: number | null;
   createdAt: string;
 };
+
+const selectCls =
+  "h-9 rounded-md border border-dash-input bg-dash-card px-3 py-1 text-sm shadow-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-ring";
 
 export default function GuestsPage() {
   const params = useParams<{ slug: string; invitationId: string }>();
@@ -171,13 +179,13 @@ export default function GuestsPage() {
     <div>
       <Link
         href={`/${slug}/dashboard/invitations/${invitationId}`}
-        className="text-sm text-text-secondary hover:text-white"
+        className="inline-flex items-center gap-1 text-sm text-dash-muted-foreground transition-colors duration-200 hover:text-dash-foreground"
       >
-        ← Back to invitation
+        <ArrowLeft className="size-4" /> Back to invitation
       </Link>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-display text-2xl font-medium">Guests</h1>
+        <h1 className="text-xl font-semibold tracking-tight">Guests</h1>
         <div className="flex items-center gap-2">
           <input
             ref={fileRef}
@@ -186,32 +194,29 @@ export default function GuestsPage() {
             className="hidden"
             onChange={(e) => e.target.files?.[0] && importCsv(e.target.files[0])}
           />
-          <button
-            onClick={() => fileRef.current?.click()}
-            className="rounded-full border border-white/20 px-4 py-2 text-sm hover:bg-white/5"
-          >
-            Import CSV
+          <button onClick={() => fileRef.current?.click()} className={buttonVariants({ variant: "outline" })}>
+            <Upload /> Import CSV
           </button>
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
-        <input
+      <Card className="mt-6 flex flex-wrap items-center gap-3 p-4">
+        <Input
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
           placeholder="Name"
-          className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-primary/50"
+          className="w-44"
         />
-        <input
+        <Input
           value={form.phone}
           onChange={(e) => setForm({ ...form, phone: e.target.value })}
           placeholder="Phone"
-          className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-primary/50"
+          className="w-40"
         />
         <select
           value={form.guestRoleId}
           onChange={(e) => setForm({ ...form, guestRoleId: e.target.value })}
-          className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-primary/50"
+          className={selectCls}
         >
           <option value="">No role</option>
           {roles.map((r) => (
@@ -222,40 +227,34 @@ export default function GuestsPage() {
         </select>
         {editing ? (
           <>
-            <button
-              onClick={saveEdit}
-              className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-secondary"
-            >
+            <button onClick={saveEdit} className={buttonVariants({ size: "sm" })}>
               Save
             </button>
-            <button
-              onClick={resetForm}
-              className="rounded-full border border-white/20 px-4 py-2 text-sm hover:bg-white/5"
-            >
+            <button onClick={resetForm} className={buttonVariants({ variant: "outline", size: "sm" })}>
               Cancel
             </button>
           </>
         ) : (
-          <button
-            onClick={addGuest}
-            className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-secondary"
-          >
+          <button onClick={addGuest} className={buttonVariants({ size: "sm" })}>
             Add guest
           </button>
         )}
-      </div>
+      </Card>
 
-      <div className="mt-6 flex flex-wrap items-center gap-3 text-sm">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name..."
-          className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-primary/50"
-        />
+      <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-dash-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name..."
+            className="w-56 pl-8"
+          />
+        </div>
         <select
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value)}
-          className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-primary/50"
+          className={selectCls}
         >
           <option value="">All roles</option>
           {roles.map((r) => (
@@ -268,14 +267,14 @@ export default function GuestsPage() {
 
       {(error || importResult) && (
         <div className="mt-4 text-sm">
-          {error && <p className="text-red-400">{error}</p>}
-          {importResult && <p className="text-green-400">{importResult}</p>}
+          {error && <p className="text-dash-destructive">{error}</p>}
+          {importResult && <p className="text-emerald-700">{importResult}</p>}
         </div>
       )}
 
-      <div className="mt-6 overflow-x-auto rounded-2xl border border-white/10">
+      <Card className="mt-6 overflow-x-auto">
         <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="bg-white/5 text-text-secondary">
+          <thead className="border-b border-dash-border text-dash-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Phone</th>
@@ -286,24 +285,22 @@ export default function GuestsPage() {
               <th className="px-4 py-3 font-medium"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/5">
+          <tbody className="divide-y divide-dash-border">
             {filtered.map((g) => (
-              <tr key={g.id} className="hover:bg-white/5">
-                <td className="px-4 py-3">{g.name}</td>
-                <td className="px-4 py-3 text-text-secondary">{g.phone ?? "—"}</td>
-                <td className="px-4 py-3 text-text-secondary">{g.roleName ?? "—"}</td>
+              <tr key={g.id} className="transition-colors duration-150 hover:bg-dash-muted/50">
+                <td className="px-4 py-3 font-medium">{g.name}</td>
+                <td className="px-4 py-3 text-dash-muted-foreground">{g.phone ?? "—"}</td>
+                <td className="px-4 py-3 text-dash-muted-foreground">{g.roleName ?? "—"}</td>
                 <td className="px-4 py-3">
                   {g.attendanceStatus === "checked_in" ? (
-                    <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-xs text-green-400">
-                      Checked in
-                    </span>
+                    <Badge variant="success">Checked in</Badge>
                   ) : (
-                    <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-400">
+                    <Badge variant={g.attendanceStatus === "pending" ? "warning" : "secondary"}>
                       {g.attendanceStatus === "pending" ? "Pending" : "—"}
-                    </span>
+                    </Badge>
                   )}
                 </td>
-                <td className="px-4 py-3 text-text-secondary">
+                <td className="px-4 py-3 text-dash-muted-foreground">
                   {g.rsvpAttendance === null
                     ? "—"
                     : g.rsvpAttendance
@@ -315,7 +312,7 @@ export default function GuestsPage() {
                     href={`/${inviteSlug}?guest=${g.token}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-primary hover:underline"
+                    className="font-medium underline-offset-4 transition-colors duration-200 hover:underline"
                   >
                     {g.token.slice(0, 8)}…
                   </a>
@@ -324,13 +321,13 @@ export default function GuestsPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => startEdit(g)}
-                      className="text-xs text-text-secondary hover:text-white"
+                      className="text-xs font-medium text-dash-muted-foreground transition-colors duration-200 hover:text-dash-foreground"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => deleteGuest(g)}
-                      className="text-xs text-red-400 hover:text-red-300"
+                      className="text-xs font-medium text-dash-destructive transition-opacity duration-200 hover:opacity-70"
                     >
                       Delete
                     </button>
@@ -340,14 +337,14 @@ export default function GuestsPage() {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-text-secondary">
+                <td colSpan={7} className="px-4 py-8 text-center text-dash-muted-foreground">
                   No guests yet. Add one above or import a CSV.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
-      </div>
+      </Card>
     </div>
   );
 }

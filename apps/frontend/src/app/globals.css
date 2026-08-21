@@ -14,6 +14,33 @@
   --font-mono: var(--font-jetbrains), monospace;
 }
 
+@theme {
+  --color-dash-background: oklch(0.985 0 0);
+  --color-dash-foreground: oklch(0.205 0 0);
+  --color-dash-card: oklch(1 0 0);
+  --color-dash-card-foreground: oklch(0.205 0 0);
+  --color-dash-popover: oklch(1 0 0);
+  --color-dash-popover-foreground: oklch(0.205 0 0);
+  --color-dash-primary: oklch(0.205 0 0);
+  --color-dash-primary-foreground: oklch(0.985 0 0);
+  --color-dash-secondary: oklch(0.97 0 0);
+  --color-dash-secondary-foreground: oklch(0.205 0 0);
+  --color-dash-muted: oklch(0.97 0 0);
+  --color-dash-muted-foreground: oklch(0.556 0 0);
+  --color-dash-accent: oklch(0.97 0 0);
+  --color-dash-accent-foreground: oklch(0.205 0 0);
+  --color-dash-destructive: oklch(0.577 0.245 27.325);
+  --color-dash-destructive-foreground: oklch(0.985 0 0);
+  --color-dash-border: oklch(0.922 0 0);
+  --color-dash-input: oklch(0.922 0 0);
+  --color-dash-ring: oklch(0.708 0 0);
+  --color-dash-sidebar: oklch(0.985 0 0);
+  --color-dash-sidebar-foreground: oklch(0.205 0 0);
+  --color-dash-sidebar-accent: oklch(0.94 0 0);
+  --color-dash-sidebar-accent-foreground: oklch(0.205 0 0);
+  --color-dash-sidebar-border: oklch(0.922 0 0);
+}
+
 body {
   background: var(--color-secondary);
   color: var(--color-foreground);

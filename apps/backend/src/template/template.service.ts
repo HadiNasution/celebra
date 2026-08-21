@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { db } from "../db/connection";
 import { templates } from "../db/schema";
 import { eq, and } from "drizzle-orm";
@@ -29,7 +29,9 @@ export class TemplateService {
     isPremium?: boolean;
   }) {
     if (this.hasSuspiciousScript(data.htmlBundle)) {
-      throw new Error("Template contains disallowed scripts (eval, document.write)");
+      throw new BadRequestException(
+        "Template contains disallowed scripts (eval, document.write)",
+      );
     }
 
     const [template] = await db

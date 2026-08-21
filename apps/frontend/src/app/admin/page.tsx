@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Building2, Mail, Wallet } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 type DashboardData = {
   tenantCount: number;
@@ -16,6 +19,12 @@ type DashboardData = {
   }>;
 };
 
+const stats = [
+  { key: "tenantCount", label: "Total Tenants", icon: Building2 },
+  { key: "invitationCount", label: "Total Invitations", icon: Mail },
+  { key: "totalRevenue", label: "Total Revenue", icon: Wallet },
+] as const;
+
 export default function AdminDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
 
@@ -26,51 +35,62 @@ export default function AdminDashboardPage() {
       .then(setData);
   }, []);
 
-  if (!data) return <p className="text-text-secondary">Loading...</p>;
+  if (!data) return <p className="animate-pulse text-sm text-dash-muted-foreground">Loading...</p>;
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-medium">Dashboard</h1>
+      <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
 
-      <div className="mt-6 grid gap-6 sm:grid-cols-3">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-          <p className="text-sm text-text-secondary">Total Tenants</p>
-          <p className="mt-1 font-display text-3xl font-medium">{data.tenantCount}</p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-          <p className="text-sm text-text-secondary">Total Invitations</p>
-          <p className="mt-1 font-display text-3xl font-medium">{data.invitationCount}</p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-          <p className="text-sm text-text-secondary">Total Revenue</p>
-          <p className="mt-1 font-display text-3xl font-medium">${data.totalRevenue}</p>
-        </div>
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {stats.map(({ key, label, icon: Icon }) => (
+          <Card key={key} className="hover:shadow-md">
+            <CardContent className="flex items-center gap-4 p-6">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-dash-muted text-dash-muted-foreground">
+                <Icon className="size-5" />
+              </span>
+              <div>
+                <p className="text-sm text-dash-muted-foreground">{label}</p>
+                <p className="mt-0.5 text-2xl font-semibold tracking-tight">
+                  {key === "totalRevenue" ? `$${data.totalRevenue}` : data[key]}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      <div className="mt-10">
-        <h2 className="text-lg font-medium">Recent Payments</h2>
-        <div className="mt-4 overflow-x-auto">
+      <div className="mt-8">
+        <h2 className="text-lg font-semibold tracking-tight">Recent Payments</h2>
+        <Card className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-white/10 text-text-secondary">
-                <th className="pb-3 pr-4">Customer</th>
-                <th className="pb-3 pr-4">Plan</th>
-                <th className="pb-3 pr-4">Amount</th>
-                <th className="pb-3">Date</th>
+              <tr className="border-b border-dash-border text-dash-muted-foreground">
+                <th className="px-6 py-3 font-medium">Customer</th>
+                <th className="px-6 py-3 font-medium">Plan</th>
+                <th className="px-6 py-3 font-medium">Amount</th>
+                <th className="px-6 py-3 font-medium">Status</th>
+                <th className="px-6 py-3 font-medium">Date</th>
               </tr>
             </thead>
             <tbody>
               {data.recentPayments.map((p) => (
-                <tr key={p.id} className="border-b border-white/5">
-                  <td className="py-3 pr-4">{p.userName}</td>
-                  <td className="py-3 pr-4">{p.plan}</td>
-                  <td className="py-3 pr-4">${p.amount}</td>
-                  <td className="py-3">{new Date(p.paidAt).toLocaleDateString()}</td>
+                <tr key={p.id} className="border-b border-dash-border transition-colors duration-150 last:border-0 hover:bg-dash-muted/50">
+                  <td className="px-6 py-3">{p.userName}</td>
+                  <td className="px-6 py-3">{p.plan}</td>
+                  <td className="px-6 py-3">${p.amount}</td>
+                  <td className="px-6 py-3">
+                    <Badge variant={p.status === "paid" ? "success" : p.status === "pending" ? "warning" : "destructive"}>
+                      {p.status}
+                    </Badge>
+                  </td>
+                  <td className="px-6 py-3 text-dash-muted-foreground">
+                    {new Date(p.paidAt).toLocaleDateString()}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       </div>
     </div>
   );

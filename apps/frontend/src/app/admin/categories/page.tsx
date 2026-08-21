@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type Category = {
   id: string;
@@ -14,7 +17,7 @@ export default function AdminCategoriesPage() {
 
   useEffect(() => {
     fetch(`${apiUrl}/categories`, { credentials: "include" }).then((r) => r.json()).then(setData);
-  }, []);
+  }, [apiUrl]);
 
   async function handleAdd(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -38,50 +41,38 @@ export default function AdminCategoriesPage() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-medium">Categories</h1>
+      <h1 className="text-xl font-semibold tracking-tight">Categories</h1>
 
-      <form onSubmit={handleAdd} className="mt-6 flex gap-3">
-        <input
-          name="name"
-          required
-          placeholder="Category name"
-          className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm outline-none"
-        />
-        <input
-          name="slug"
-          required
-          placeholder="slug"
-          className="w-40 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm outline-none"
-        />
-        <button type="submit" className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-secondary">
-          Add
-        </button>
+      <form onSubmit={handleAdd} className="mt-6 flex flex-wrap gap-3">
+        <Input name="name" required placeholder="Category name" className="max-w-xs" />
+        <Input name="slug" required placeholder="slug" className="w-40" />
+        <Button type="submit">Add</Button>
       </form>
 
-      <div className="mt-6">
+      <Card className="mt-6 overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-white/10 text-text-secondary">
-              <th className="pb-3 pr-4">Name</th>
-              <th className="pb-3 pr-4">Slug</th>
-              <th className="pb-3">Actions</th>
+            <tr className="border-b border-dash-border text-dash-muted-foreground">
+              <th className="px-6 py-3 font-medium">Name</th>
+              <th className="px-6 py-3 font-medium">Slug</th>
+              <th className="px-6 py-3 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
             {data.map((c) => (
-              <tr key={c.id} className="border-b border-white/5">
-                <td className="py-3 pr-4">{c.name}</td>
-                <td className="py-3 pr-4">{c.slug}</td>
-                <td className="py-3">
-                  <button onClick={() => handleDelete(c.id)} className="text-xs text-red-400 hover:underline">
+              <tr key={c.id} className="border-b border-dash-border last:border-0">
+                <td className="px-6 py-3">{c.name}</td>
+                <td className="px-6 py-3 text-dash-muted-foreground">{c.slug}</td>
+                <td className="px-6 py-3">
+                  <Button variant="destructive" size="sm" onClick={() => handleDelete(c.id)}>
                     Delete
-                  </button>
+                  </Button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
     </div>
   );
 }

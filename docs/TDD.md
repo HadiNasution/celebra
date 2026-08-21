@@ -76,7 +76,7 @@ No crossover between design systems.
 /admin                     → (admin)/... (dashboard, customers, subscriptions, templates, categories, publish-monitoring)
 /{slug}                    → [slug]/page.tsx (public invitation)
 /{slug}?guest={token}      → [slug]/page.tsx (guest personalization)
-/{slug}/dashboard          → [slug]/(dashboard)/... (invitations, editor, guests)
+/{slug}/dashboard          → [slug]/dashboard/... (home redirects to invitations, editor, guests)
 ```
 
 ### 2.2 NestJS API Modules

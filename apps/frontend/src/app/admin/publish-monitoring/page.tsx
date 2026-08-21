@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 type PublishRow = {
   publish_histories: {
@@ -30,39 +32,37 @@ export default function AdminPublishMonitorPage() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-medium">Publish Monitor</h1>
-      <div className="mt-6 overflow-x-auto">
+      <h1 className="text-xl font-semibold tracking-tight">Publish Monitor</h1>
+      <Card className="mt-6 overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-white/10 text-text-secondary">
-              <th className="pb-3 pr-4">Tenant</th>
-              <th className="pb-3 pr-4">Invitation</th>
-              <th className="pb-3 pr-4">Version</th>
-              <th className="pb-3 pr-4">Status</th>
-              <th className="pb-3">Published At</th>
+            <tr className="border-b border-dash-border text-dash-muted-foreground">
+              <th className="px-6 py-3 font-medium">Tenant</th>
+              <th className="px-6 py-3 font-medium">Invitation</th>
+              <th className="px-6 py-3 font-medium">Version</th>
+              <th className="px-6 py-3 font-medium">Status</th>
+              <th className="px-6 py-3 font-medium">Published At</th>
             </tr>
           </thead>
           <tbody>
-            {data.map((row, i) => (
-              <tr key={i} className="border-b border-white/5">
-                <td className="py-3 pr-4">{row.tenants.name}</td>
-                <td className="py-3 pr-4">{row.invitations.title}</td>
-                <td className="py-3 pr-4">v{row.publish_histories.version}</td>
-                <td className="py-3 pr-4">
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${
-                    row.publish_histories.status === "success"
-                      ? "bg-green-500/20 text-green-400"
-                      : "bg-red-500/20 text-red-400"
-                  }`}>{row.publish_histories.status}</span>
+            {data.map((row) => (
+              <tr key={row.publish_histories.id} className="border-b border-dash-border last:border-0">
+                <td className="px-6 py-3">{row.tenants.name}</td>
+                <td className="px-6 py-3">{row.invitations.title}</td>
+                <td className="px-6 py-3">v{row.publish_histories.version}</td>
+                <td className="px-6 py-3">
+                  <Badge variant={row.publish_histories.status === "success" ? "success" : "destructive"}>
+                    {row.publish_histories.status}
+                  </Badge>
                 </td>
-                <td className="py-3">
+                <td className="px-6 py-3 text-dash-muted-foreground">
                   {new Date(row.publish_histories.publishedAt).toLocaleString()}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
     </div>
   );
 }

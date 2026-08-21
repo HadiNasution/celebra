@@ -3,6 +3,8 @@ import { db } from "../db/connection";
 import { auditLogs, tenants, users, subscriptions } from "../db/schema";
 import { and, eq, ne } from "drizzle-orm";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 @Injectable()
 export class AdminCustomersService {
   async findAll(page = 1, limit = 20) {
@@ -12,8 +14,9 @@ export class AdminCustomersService {
   }
 
   async findOne(id: string) {
+    if (!UUID_RE.test(id)) throw new NotFoundException("Customer not found");
     const [tenant] = await db.select().from(tenants).where(eq(tenants.id, id)).limit(1);
-    if (!tenant) return null;
+    if (!tenant) throw new NotFoundException("Customer not found");
 
     const tenantUsers = await db.select().from(users).where(eq(users.tenantId, id));
     const [sub] = await db.select().from(subscriptions).where(eq(subscriptions.tenantId, id)).limit(1);
@@ -22,6 +25,7 @@ export class AdminCustomersService {
   }
 
   async update(id: string, data: { name?: string; slug?: string }) {
+    if (!UUID_RE.test(id)) throw new NotFoundException("Customer not found");
     if (data.slug) {
       const [existing] = await db
         .select({ id: tenants.id })
