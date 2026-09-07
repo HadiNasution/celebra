@@ -101,30 +101,38 @@ export default function NewInvitationPage() {
         ))}
       </div>
 
-      <div className="dash-invitation-new__templates mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="dash-invitation-new__templates mt-6 flex flex-col gap-4">
         {visibleTemplates.map((t) => (
           <button
             key={t.id}
             onClick={() => setTemplateId(t.id)}
             className={cn(
-              "dash-invitation-new__template-card rounded-lg border p-5 text-left shadow transition-all duration-200 active:scale-[0.99]",
+              "dash-invitation-new__template-card group w-full overflow-hidden rounded-lg border text-left shadow transition-all duration-200 active:scale-[0.99]",
               templateId === t.id
                 ? "border-dash-primary bg-dash-accent shadow-sm"
                 : "border-dash-border bg-dash-card hover:-translate-y-0.5 hover:border-dash-ring hover:shadow-md",
             )}
           >
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="font-medium">{t.name}</h2>
-              {t.isPremium && <Badge>Premium</Badge>}
+            <div className="flex flex-col sm:flex-row">
+              {t.previewImage ? (
+                <div className="aspect-video w-full overflow-hidden bg-dash-muted sm:aspect-[3/1] sm:w-64 sm:shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={t.previewImage}
+                    alt={t.name}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                </div>
+              ) : (
+                <div className="flex aspect-video w-full items-center justify-center bg-dash-muted text-dash-muted-foreground sm:aspect-[3/1] sm:w-64 sm:shrink-0">
+                  <span className="text-3xl">👋</span>
+                </div>
+              )}
+              <div className="flex flex-1 items-center justify-between gap-3 p-5">
+                <h2 className="font-medium">{t.name}</h2>
+                {t.isPremium && <Badge variant="premium">Premium</Badge>}
+              </div>
             </div>
-            {t.previewImage && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={t.previewImage}
-                alt={t.name}
-                className="mt-3 h-32 w-full rounded-md object-cover"
-              />
-            )}
           </button>
         ))}
         {visibleTemplates.length === 0 && (

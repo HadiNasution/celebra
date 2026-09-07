@@ -178,10 +178,10 @@ export default function GuestsPage() {
   return (
     <div>
       <Link
-        href={`/${slug}/dashboard/invitations/${invitationId}`}
+        href={`/${slug}/dashboard/invitations`}
         className="inline-flex items-center gap-1 text-sm text-dash-muted-foreground transition-colors duration-200 hover:text-dash-foreground"
       >
-        <ArrowLeft className="size-4" /> Back to invitation
+        <ArrowLeft className="size-4" /> Back to invitations
       </Link>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-4">

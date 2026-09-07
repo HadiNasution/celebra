@@ -3,7 +3,7 @@ import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { db, rawPool } from "../db/connection";
 import { RedisService } from "../redis/redis.service";
-import { auditLogs, invitationContents, invitations, publishHistories, templates, guests, guestbooks, rsvps, subscriptions } from "../db/schema";
+import { auditLogs, invitationContents, invitations, publishHistories, templates, guests, guestbooks, rsvps, subscriptions, categories } from "../db/schema";
 import { assembleHtml, renderTemplate } from "./renderer";
 
 export type InvitationUser = {
@@ -38,9 +38,11 @@ export class InvitationService {
         createdAt: invitations.createdAt,
         updatedAt: invitations.updatedAt,
         templatePreviewImage: templates.previewImage,
+        categoryName: categories.name,
       })
       .from(invitations)
       .leftJoin(templates, eq(templates.id, invitations.templateVersionId))
+      .leftJoin(categories, eq(categories.id, templates.categoryId))
       .where(and(...conditions))
       .orderBy(desc(invitations.createdAt));
   }
@@ -253,6 +255,18 @@ export class InvitationService {
 
   async restore(user: InvitationUser, id: string) {
     return this.setArchived(user, id, null);
+  }
+
+  async remove(user: InvitationUser, id: string) {
+    const inv = await this.ownedInvitation(user, id);
+    if (!inv) throw new NotFoundException("Invitation not found");
+    await db.delete(invitationContents).where(eq(invitationContents.invitationId, id));
+    await db.delete(guestbooks).where(eq(guestbooks.invitationId, id));
+    await db.delete(rsvps).where(eq(rsvps.guestId, sql`(SELECT id FROM guests WHERE invitation_id = ${id})`));
+    await db.delete(guests).where(eq(guests.invitationId, id));
+    await db.delete(publishHistories).where(eq(publishHistories.invitationId, id));
+    await db.delete(invitations).where(eq(invitations.id, id));
+    return { ok: true };
   }
 
   async getStats(user: InvitationUser, id: string) {

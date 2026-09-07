@@ -42,6 +42,7 @@ export class TemplateController {
     name: string;
     isActive: boolean;
     isPremium: boolean;
+    previewImage: string | null;
   }>) {
     return this.templateService.update(id, dto);
   }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Put, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { InvitationService } from "./invitation.service";
 import { CreateInvitationDto, UpdateContentDto } from "./invitation.dto";
 import { RolesGuard } from "../common/guards/roles.guard";
@@ -68,5 +68,10 @@ export class InvitationController {
   @Patch(":id/restore")
   restore(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string) {
     return this.invitationService.restore(user, id);
+  }
+
+  @Delete(":id")
+  remove(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string) {
+    return this.invitationService.remove(user, id);
   }
 }

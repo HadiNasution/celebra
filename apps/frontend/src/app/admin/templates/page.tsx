@@ -14,6 +14,7 @@ type Template = {
   version: number;
   isPremium: boolean;
   isActive: boolean;
+  previewImage: string | null;
 };
 
 type Category = {
@@ -34,6 +35,7 @@ export default function AdminTemplatesPage() {
   const [editing, setEditing] = useState<Template | null>(null);
   const [editName, setEditName] = useState("");
   const [editPremium, setEditPremium] = useState(false);
+  const [editPreviewImage, setEditPreviewImage] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [sortKey, setSortKey] = useState<string>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -88,6 +90,7 @@ export default function AdminTemplatesPage() {
     const body = {
       name: form.get("name"),
       categoryId: form.get("categoryId"),
+      previewImage: form.get("previewImage") || undefined,
       htmlBundle: form.get("htmlBundle"),
       cssBundle: form.get("cssBundle") || undefined,
       jsBundle: form.get("jsBundle") || undefined,
@@ -118,7 +121,7 @@ export default function AdminTemplatesPage() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ name: editName, isPremium: editPremium }),
+      body: JSON.stringify({ name: editName, isPremium: editPremium, previewImage: editPreviewImage || null }),
     });
     if (!res.ok) {
       setError("Failed to update template.");
@@ -162,6 +165,10 @@ export default function AdminTemplatesPage() {
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
               <Input id="name" name="name" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="previewImage">Thumbnail URL</Label>
+              <Input id="previewImage" name="previewImage" placeholder="https://..." />
             </div>
             <div className="space-y-2">
               <Label htmlFor="categoryId">Category</Label>
@@ -235,6 +242,12 @@ export default function AdminTemplatesPage() {
             placeholder="Name"
             className="w-48"
           />
+          <Input
+            value={editPreviewImage}
+            onChange={(e) => setEditPreviewImage(e.target.value)}
+            placeholder="Thumbnail URL"
+            className="w-56"
+          />
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -270,6 +283,7 @@ export default function AdminTemplatesPage() {
                   )}
                 </th>
               ))}
+              <th className="admin-templates__th px-6 py-3 font-medium">Thumbnail</th>
               <th className="admin-templates__th px-6 py-3 font-medium">Actions</th>
             </tr>
           </thead>
@@ -279,10 +293,18 @@ export default function AdminTemplatesPage() {
                 <td className="px-6 py-3">{t.name}</td>
                 <td className="px-6 py-3">{t.version}</td>
                 <td className="px-6 py-3">
-                  {t.isPremium ? <Badge variant="secondary">Premium</Badge> : <span className="text-dash-muted-foreground">No</span>}
+                  {t.isPremium ? <Badge variant="premium">Premium</Badge> : <span className="text-dash-muted-foreground">No</span>}
                 </td>
                 <td className="px-6 py-3">
                   <Badge variant={t.isActive ? "success" : "destructive"}>{t.isActive ? "Active" : "Inactive"}</Badge>
+                </td>
+                <td className="px-6 py-3">
+                  {t.previewImage ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={t.previewImage} alt={t.name} className="h-10 w-16 rounded object-cover" />
+                  ) : (
+                    <span className="text-dash-muted-foreground">—</span>
+                  )}
                 </td>
                 <td className="px-6 py-3">
                   <div className="flex gap-2">
@@ -293,6 +315,7 @@ export default function AdminTemplatesPage() {
                         setEditing(t);
                         setEditName(t.name);
                         setEditPremium(t.isPremium);
+                        setEditPreviewImage(t.previewImage ?? "");
                       }}
                     >
                       Edit

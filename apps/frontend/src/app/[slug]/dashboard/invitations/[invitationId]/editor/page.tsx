@@ -121,7 +121,7 @@ export default function EditorPage() {
       <div>
         <p className="text-sm text-dash-destructive">{error}</p>
         <Link
-          href={`/${slug}/dashboard/invitations/${invitationId}`}
+          href={`/${slug}/dashboard/invitations`}
           className="mt-4 inline-flex items-center gap-1 text-sm text-dash-muted-foreground transition-colors duration-200 hover:text-dash-foreground"
         >
           <ArrowLeft className="size-4" /> Back
@@ -140,7 +140,7 @@ export default function EditorPage() {
     <div className="flex h-[calc(100dvh-3rem)] flex-col lg:h-[calc(100vh-4rem)]">
       <header className="flex items-center gap-4 border-b border-dash-border bg-dash-card px-4 py-3 lg:px-6">
         <Link
-          href={`/${slug}/dashboard/invitations/${invitationId}`}
+          href={`/${slug}/dashboard/invitations`}
           className="inline-flex items-center gap-1 text-sm text-dash-muted-foreground transition-colors duration-200 hover:text-dash-foreground"
         >
           <ArrowLeft className="size-4" /> Back

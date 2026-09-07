@@ -82,7 +82,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       label: "Invitations",
       icon: Mail,
       children: [
-        { label: "All Invitations", href: `/${slug}/dashboard/invitations` },
+        { label: "My Invitations", href: `/${slug}/dashboard/invitations` },
         { label: "New Invitation", href: `/${slug}/dashboard/invitations/new` },
       ],
     },

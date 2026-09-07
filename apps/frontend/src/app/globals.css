@@ -46,3 +46,16 @@ body {
   color: var(--color-foreground);
   font-family: var(--font-sans);
 }
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.badge-premium {
+  background: linear-gradient(110deg, #d4a843 0%, #f5e6a3 40%, #d4a843 60%, #f5e6a3 80%, #d4a843 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2.5s ease-in-out infinite;
+  color: #3d2e0a;
+  border-color: #c9a23a;
+}
