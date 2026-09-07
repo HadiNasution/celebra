@@ -16,6 +16,13 @@ type CustomerDetail = {
   subscription: { plan: string; status: string; expiredAt: string } | null;
 };
 
+function formatPlan(plan: string): string {
+  return plan
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
 export default function CustomerDetailPage() {
   const params = useParams();
   const [data, setData] = useState<CustomerDetail | null>(null);
@@ -37,37 +44,37 @@ export default function CustomerDetailPage() {
 
   if (error) {
     return (
-      <div>
+      <section className="admin-customer-detail">
         <p className="text-sm text-dash-destructive">{error}</p>
         <Link
           href="/admin/customers"
-          className="mt-4 inline-flex items-center gap-1 text-sm text-dash-muted-foreground transition-colors duration-200 hover:text-dash-foreground"
+          className="admin-customer-detail__back mt-4 inline-flex items-center gap-1 text-sm text-dash-muted-foreground transition-colors duration-200 hover:text-dash-foreground"
         >
           <ArrowLeft className="size-4" /> Back to customers
         </Link>
-      </div>
+      </section>
     );
   }
 
   if (!data) return <p className="animate-pulse text-sm text-dash-muted-foreground">Loading...</p>;
 
   return (
-    <div>
+    <section className="admin-customer-detail">
       <Link
         href="/admin/customers"
-        className="inline-flex items-center gap-1 text-sm text-dash-muted-foreground transition-colors duration-200 hover:text-dash-foreground"
+        className="admin-customer-detail__back inline-flex items-center gap-1 text-sm text-dash-muted-foreground transition-colors duration-200 hover:text-dash-foreground"
       >
         <ArrowLeft className="size-4" /> Back to customers
       </Link>
-      <h1 className="mt-3 text-xl font-semibold tracking-tight">{data.name}</h1>
-      <p className="mt-1 text-sm text-dash-muted-foreground">Slug: {data.slug}</p>
+      <h1 className="admin-customer-detail__heading mt-3 text-2xl font-bold tracking-tight">{data.name}</h1>
+      <p className="admin-customer-detail__slug mt-1 text-sm text-dash-muted-foreground">Slug: {data.slug}</p>
 
-      <Card className="mt-6">
+      <Card className="admin-customer-detail__users-card mt-6">
         <CardHeader>
           <CardTitle>Users</CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="admin-customer-detail__users-table w-full min-w-[450px] text-left text-sm">
             <thead>
               <tr className="border-b border-dash-border text-dash-muted-foreground">
                 <th className="pb-2 pr-4 font-medium">Name</th>
@@ -77,7 +84,7 @@ export default function CustomerDetailPage() {
             </thead>
             <tbody>
               {data.users.map((u) => (
-                <tr key={u.id} className="border-b border-dash-border last:border-0">
+                <tr key={u.id} className="admin-customer-detail__user-row border-b border-dash-border last:border-0">
                   <td className="py-2 pr-4">{u.name}</td>
                   <td className="py-2 pr-4 text-dash-muted-foreground">{u.email}</td>
                   <td className="py-2">
@@ -91,13 +98,13 @@ export default function CustomerDetailPage() {
       </Card>
 
       {data.subscription && (
-        <Card className="mt-6">
+        <Card className="admin-customer-detail__subscription-card mt-6">
           <CardHeader>
             <CardTitle>Subscription</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <p className="flex items-center gap-2">
-              Plan: <span className="font-medium">{data.subscription.plan}</span>
+              Plan: <span className="font-medium">{formatPlan(data.subscription.plan)}</span>
             </p>
             <p className="flex items-center gap-2">
               Status:{" "}
@@ -114,6 +121,6 @@ export default function CustomerDetailPage() {
           </CardContent>
         </Card>
       )}
-    </div>
+    </section>
   );
 }

@@ -53,16 +53,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-dash-background">
+      <div className="admin-layout__loading flex min-h-screen items-center justify-center bg-dash-background">
         <p className="animate-pulse text-sm text-dash-muted-foreground">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-dash-background text-dash-foreground">
+    <div className="admin-layout flex min-h-screen flex-col bg-dash-background text-dash-foreground lg:flex-row">
       <Sidebar brand="Celebra Admin" groups={navGroups} />
-      <main className="flex-1 overflow-x-hidden p-6 lg:p-8">{children}</main>
+      <main className="admin-layout__main flex-1 overflow-x-hidden p-6 lg:p-8">{children}</main>
     </div>
   );
 }

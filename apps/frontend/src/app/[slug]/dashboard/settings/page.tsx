@@ -46,11 +46,11 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-md">
-      <h1 className="text-xl font-semibold tracking-tight">Settings</h1>
-      <p className="mt-1 text-sm text-dash-muted-foreground">Change your account password.</p>
+    <section className="dash-settings max-w-md">
+      <h1 className="dash-settings__heading text-2xl font-bold tracking-tight">Settings</h1>
+      <p className="dash-settings__description mt-1 text-sm text-dash-muted-foreground">Change your account password.</p>
 
-      <Card className="mt-6">
+      <Card className="dash-settings__password-card mt-6">
         <CardHeader>
           <CardTitle>Password</CardTitle>
           <CardDescription>Use at least 8 characters for your new password.</CardDescription>
@@ -85,6 +85,6 @@ export default function SettingsPage() {
           </form>
         </CardContent>
       </Card>
-    </div>
+    </section>
   );
 }

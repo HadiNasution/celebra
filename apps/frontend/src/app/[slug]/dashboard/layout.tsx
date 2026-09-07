@@ -26,7 +26,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         return r.json();
       })
       .then(async (me) => {
-        // super_admin dikelola via /admin; hindari menulis konten ke tenant salah
         if (me.user.role === "super_admin") {
           router.replace("/admin");
           return;
@@ -58,16 +57,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-dash-background">
+      <div className="dash-layout__loading flex min-h-screen items-center justify-center bg-dash-background">
         <p className="animate-pulse text-sm text-dash-muted-foreground">Loading...</p>
       </div>
     );
   }
 
-  if (!tenant) return null;
+  if (!tenant) {
+    return (
+      <div className="dash-layout__error flex min-h-screen items-center justify-center bg-dash-background">
+        <p className="text-sm text-dash-muted-foreground">
+          Unable to load dashboard.{" "}
+          <a href="/login" className="font-medium underline underline-offset-4 hover:text-dash-foreground">
+            Log in again
+          </a>
+        </p>
+      </div>
+    );
+  }
 
   const navGroups: NavGroup[] = [
-    { label: "Dashboard", icon: LayoutDashboard, href: `/${slug}/dashboard/invitations` },
+    { label: "Dashboard", icon: LayoutDashboard, href: `/${slug}/dashboard` },
     {
       label: "Invitations",
       icon: Mail,
@@ -84,12 +94,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   ];
 
   return (
-    <div className="flex min-h-screen bg-dash-background text-dash-foreground">
+    <div className="dash-layout flex min-h-screen flex-col bg-dash-background text-dash-foreground lg:flex-row">
       <Sidebar
         brand={tenant.name}
         groups={navGroups}
         extra={
-          <div>
+          <div className="dash-layout__guest-select">
             <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-dash-muted-foreground">
               Guests
             </p>
@@ -110,7 +120,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         }
       />
-      <main className="flex-1 overflow-x-hidden p-6 lg:p-8">{children}</main>
+      <main className="dash-layout__main flex-1 overflow-x-hidden p-6 lg:p-8">{children}</main>
     </div>
   );
 }

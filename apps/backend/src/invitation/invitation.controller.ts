@@ -36,6 +36,11 @@ export class InvitationController {
     return this.invitationService.getEditorData(user, id);
   }
 
+  @Get(":id/stats")
+  getStats(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string) {
+    return this.invitationService.getStats(user, id);
+  }
+
   @Put(":id/content")
   updateContent(
     @CurrentUser() user: AuthenticatedUser,

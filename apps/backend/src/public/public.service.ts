@@ -9,7 +9,7 @@ import {
 } from "@nestjs/common";
 import { promises as fs } from "fs";
 import { join } from "path";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../db/connection";
 import {
   guestMedia,
@@ -48,6 +48,7 @@ type Invitation = {
   templateVersionId: string;
   title: string;
   slug: string;
+  visitCount: number;
 };
 
 @Injectable()
@@ -57,6 +58,12 @@ export class PublicService {
   async getInvitation(slug: string, guestToken?: string) {
     const { invitation, contentJson } = await this.resolvePublishedInvitation(slug);
     const html = await this.renderOrCache(invitation);
+
+    // Increment visit count
+    await db
+      .update(invitations)
+      .set({ visitCount: sql<number>`${invitations.visitCount} + 1` })
+      .where(eq(invitations.id, invitation.id));
 
     let guest: { name: string } | null = null;
     if (guestToken) {
@@ -217,6 +224,7 @@ export class PublicService {
         templateVersionId: invitation.templateVersionId,
         title: invitation.title,
         slug: invitation.slug,
+        visitCount: invitation.visitCount ?? 0,
       },
       contentJson: (content?.contentJson ?? {}) as Record<string, unknown>,
     };

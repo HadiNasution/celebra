@@ -70,10 +70,10 @@ export default function NewInvitationPage() {
   }
 
   return (
-    <div>
-      <h1 className="text-xl font-semibold tracking-tight">New Invitation</h1>
+    <section className="dash-invitation-new">
+      <h1 className="dash-invitation-new__heading text-2xl font-bold tracking-tight">New Invitation</h1>
 
-      <div className="mt-6 flex flex-wrap gap-2 text-sm">
+      <div className="dash-invitation-new__categories mt-6 flex flex-wrap gap-2 text-sm">
         <button
           onClick={() => setCategoryId("")}
           className={cn(
@@ -101,13 +101,13 @@ export default function NewInvitationPage() {
         ))}
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="dash-invitation-new__templates mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {visibleTemplates.map((t) => (
           <button
             key={t.id}
             onClick={() => setTemplateId(t.id)}
             className={cn(
-              "rounded-lg border p-5 text-left transition-all duration-200 active:scale-[0.99]",
+              "dash-invitation-new__template-card rounded-lg border p-5 text-left shadow transition-all duration-200 active:scale-[0.99]",
               templateId === t.id
                 ? "border-dash-primary bg-dash-accent shadow-sm"
                 : "border-dash-border bg-dash-card hover:-translate-y-0.5 hover:border-dash-ring hover:shadow-md",
@@ -128,13 +128,13 @@ export default function NewInvitationPage() {
           </button>
         ))}
         {visibleTemplates.length === 0 && (
-          <p className="text-sm text-dash-muted-foreground">
+          <p className="dash-invitation-new__empty text-sm text-dash-muted-foreground">
             No templates available. Contact the administrator to upload templates first.
           </p>
         )}
       </div>
 
-      <form onSubmit={handleCreate} className="mt-8 max-w-md space-y-4">
+      <form onSubmit={handleCreate} className="dash-invitation-new__form mt-8 w-full space-y-4 rounded-lg bg-dash-muted/50 p-6">
         <div className="space-y-2">
           <Label htmlFor="title">Invitation title</Label>
           <Input
@@ -150,6 +150,6 @@ export default function NewInvitationPage() {
           {loading ? "Creating..." : "Create Invitation"}
         </Button>
       </form>
-    </div>
+    </section>
   );
 }

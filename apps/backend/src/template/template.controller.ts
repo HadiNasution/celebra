@@ -15,6 +15,13 @@ export class TemplateController {
     return this.templateService.findAll(categoryId);
   }
 
+  @UseGuards(RolesGuard)
+  @Roles("super_admin")
+  @Get("admin/all")
+  findAllAdmin(@Query("categoryId") categoryId?: string) {
+    return this.templateService.findAllAdmin(categoryId);
+  }
+
   @Public()
   @Get(":id")
   findOne(@Param("id") id: string) {

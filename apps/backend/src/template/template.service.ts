@@ -13,6 +13,17 @@ export class TemplateService {
     return db.select().from(templates).where(and(...conditions)).orderBy(templates.name);
   }
 
+  async findAllAdmin(categoryId?: string) {
+    const conditions = [];
+    if (categoryId) {
+      conditions.push(eq(templates.categoryId, categoryId));
+    }
+    if (conditions.length > 0) {
+      return db.select().from(templates).where(and(...conditions)).orderBy(templates.name);
+    }
+    return db.select().from(templates).orderBy(templates.name);
+  }
+
   async findById(id: string) {
     const result = await db.select().from(templates).where(eq(templates.id, id)).limit(1);
     return result[0] ?? null;

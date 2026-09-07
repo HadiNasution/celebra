@@ -16,6 +16,7 @@ type Invitation = {
   status: "draft" | "published";
   publishedAt: string | null;
   createdAt: string;
+  templatePreviewImage: string | null;
 };
 
 type Filter = "all" | "draft" | "published";
@@ -43,15 +44,15 @@ export default function InvitationsPage() {
   useEffect(load, [load]);
 
   return (
-    <div>
+    <section className="dash-invitations">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold tracking-tight">Invitations</h1>
+        <h1 className="dash-invitations__heading text-2xl font-bold tracking-tight">Invitations</h1>
         <Link href={`/${slug}/dashboard/invitations/new`} className={buttonVariants()}>
           <Plus /> New Invitation
         </Link>
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center gap-2 text-sm">
+      <div className="dash-invitations__filters mt-6 flex flex-wrap items-center gap-2 text-sm">
         {filters.map((f) => (
           <button
             key={f}
@@ -77,29 +78,45 @@ export default function InvitationsPage() {
         </label>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="dash-invitations__grid mt-6 flex flex-col gap-4">
         {invitations.map((inv) => (
           <Link
             key={inv.id}
             href={`/${slug}/dashboard/invitations/${inv.id}`}
-            className="group"
+            className="dash-invitations__card-link group"
           >
-            <Card className="h-full p-5 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-dash-ring group-hover:shadow-md">
-              <div className="flex items-start justify-between gap-3">
-                <h2 className="font-medium">{inv.title}</h2>
-                <Badge variant={inv.status === "published" ? "success" : "warning"}>
-                  {inv.status}
-                </Badge>
+            <Card className="dash-invitations__card h-full overflow-hidden transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-dash-ring group-hover:shadow-md">
+              {inv.templatePreviewImage ? (
+                <div className="aspect-video w-full overflow-hidden bg-dash-muted lg:aspect-[3/1]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={inv.templatePreviewImage}
+                    alt={inv.title}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                </div>
+              ) : (
+                <div className="flex aspect-video w-full items-center justify-center bg-dash-muted text-dash-muted-foreground lg:aspect-[3/1]">
+                  <span className="text-3xl">👋</span>
+                </div>
+              )}
+              <div className="p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <h2 className="dash-invitations__card-title font-medium">{inv.title}</h2>
+                  <Badge variant={inv.status === "published" ? "success" : "warning"}>
+                    {inv.status}
+                  </Badge>
+                </div>
+                <p className="dash-invitations__card-meta mt-3 text-sm text-dash-muted-foreground">
+                  /{inv.slug}
+                  {inv.publishedAt ? ` · Published ${new Date(inv.publishedAt).toLocaleDateString()}` : ""}
+                </p>
               </div>
-              <p className="mt-3 text-sm text-dash-muted-foreground">
-                /{inv.slug}
-                {inv.publishedAt ? ` · Published ${new Date(inv.publishedAt).toLocaleDateString()}` : ""}
-              </p>
             </Card>
           </Link>
         ))}
         {invitations.length === 0 && (
-          <p className="text-sm text-dash-muted-foreground">
+          <p className="dash-invitations__empty text-sm text-dash-muted-foreground">
             No invitations yet.{" "}
             <Link href={`/${slug}/dashboard/invitations/new`} className="font-medium underline-offset-4 hover:underline">
               Create your first one
@@ -107,6 +124,6 @@ export default function InvitationsPage() {
           </p>
         )}
       </div>
-    </div>
+    </section>
   );
 }

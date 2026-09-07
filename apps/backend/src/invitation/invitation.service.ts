@@ -1,9 +1,9 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
-import { and, count, desc, eq, isNull } from "drizzle-orm";
+import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { db, rawPool } from "../db/connection";
 import { RedisService } from "../redis/redis.service";
-import { auditLogs, invitationContents, invitations, publishHistories, templates } from "../db/schema";
+import { auditLogs, invitationContents, invitations, publishHistories, templates, guests, guestbooks, rsvps, subscriptions } from "../db/schema";
 import { assembleHtml, renderTemplate } from "./renderer";
 
 export type InvitationUser = {
@@ -28,8 +28,19 @@ export class InvitationService {
     if (!includeArchived) conditions.push(isNull(invitations.deletedAt));
     if (status) conditions.push(eq(invitations.status, status));
     return db
-      .select()
+      .select({
+        id: invitations.id,
+        slug: invitations.slug,
+        title: invitations.title,
+        status: invitations.status,
+        publishedAt: invitations.publishedAt,
+        deletedAt: invitations.deletedAt,
+        createdAt: invitations.createdAt,
+        updatedAt: invitations.updatedAt,
+        templatePreviewImage: templates.previewImage,
+      })
       .from(invitations)
+      .leftJoin(templates, eq(templates.id, invitations.templateVersionId))
       .where(and(...conditions))
       .orderBy(desc(invitations.createdAt));
   }
@@ -242,6 +253,51 @@ export class InvitationService {
 
   async restore(user: InvitationUser, id: string) {
     return this.setArchived(user, id, null);
+  }
+
+  async getStats(user: InvitationUser, id: string) {
+    const inv = await this.ownedInvitation(user, id);
+    if (!inv) throw new NotFoundException("Invitation not found");
+
+    const [guestCount] = await db
+      .select({ value: count() })
+      .from(guests)
+      .where(eq(guests.invitationId, id));
+
+    const [guestbookCount] = await db
+      .select({ value: count() })
+      .from(guestbooks)
+      .where(eq(guestbooks.invitationId, id));
+
+    const [rsvpCount] = await db
+      .select({ value: count() })
+      .from(rsvps)
+      .innerJoin(guests, eq(rsvps.guestId, guests.id))
+      .where(eq(guests.invitationId, id));
+
+    const [sub] = await db
+      .select({ status: subscriptions.status, expiredAt: subscriptions.expiredAt })
+      .from(subscriptions)
+      .where(eq(subscriptions.tenantId, user.tenantId!))
+      .limit(1);
+
+    return {
+      visitCount: inv.visitCount ?? 0,
+      guestCount: guestCount?.value ?? 0,
+      guestbookCount: guestbookCount?.value ?? 0,
+      rsvpCount: rsvpCount?.value ?? 0,
+      status: inv.status,
+      publishedAt: inv.publishedAt,
+      subscriptionStatus: sub?.status ?? null,
+      subscriptionExpiredAt: sub?.expiredAt ?? null,
+    };
+  }
+
+  async incrementVisits(id: string) {
+    await db
+      .update(invitations)
+      .set({ visitCount: sql<number>`${invitations.visitCount} + 1` })
+      .where(eq(invitations.id, id));
   }
 
   private async setArchived(user: InvitationUser, id: string, deletedAt: Date | null) {
